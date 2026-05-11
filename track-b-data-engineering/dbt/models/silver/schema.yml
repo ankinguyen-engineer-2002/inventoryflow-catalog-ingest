@@ -1,0 +1,51 @@
+# Silver layer schema + tests.
+# These tests run automatically on `dbt test` and gate the gold-layer
+# materialisation: gold cannot build on top of silver that fails.
+
+version: 2
+
+models:
+  - name: silver_parts_atomic
+    description: Normalised parts table. One row per (dealer_id, part_number).
+    columns:
+      - name: dealer_id
+        description: Tenant identifier
+        tests:
+          - not_null
+      - name: part_number
+        description: OEM part number, trimmed
+        tests:
+          - not_null
+      - name: name_en
+        description: English part name
+      - name: name_cn
+        description: Chinese part name
+      - name: retail_price
+        description: Recommended retail price in USD
+        tests:
+          - dbt_utils.not_negative:
+              severity: warn
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - dealer_id
+            - part_number
+
+  - name: silver_fitment_atomic
+    description: Atomic fitment relationships, one row per (part, vehicle).
+    columns:
+      - name: dealer_id
+        tests:
+          - not_null
+      - name: part_number
+        tests:
+          - not_null
+      - name: model_code
+        description: Kayo model code prefix (AY70-2, AT110, etc.)
+        tests:
+          - not_null
+      - name: make
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Kayo']

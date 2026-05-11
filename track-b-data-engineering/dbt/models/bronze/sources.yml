@@ -1,0 +1,32 @@
+# Bronze layer source declarations.
+# These tables are written by the Dagster `bronze_catalog_rows` asset
+# directly into Iceberg via pyiceberg. dbt only reads them.
+
+version: 2
+
+sources:
+  - name: bronze
+    schema: inventoryflow
+    database: iceberg_warehouse
+    description: |
+      Raw landing tables. One row per cell-row from the source xlsx.
+      Schemaless `_raw_json` column preserves the full original cell
+      content even after silver normalisation.
+    tables:
+      - name: bronze_catalog_rows
+        description: Raw rows from OEM xlsx files
+        columns:
+          - name: _dealer_id
+            description: UUID of the dealer this row came from
+            tests:
+              - not_null
+          - name: _ingestion_date
+            description: Date the row was ingested
+            tests:
+              - not_null
+          - name: _source_sheet
+            description: Original xlsx sheet name (trimmed)
+            tests:
+              - not_null
+          - name: _raw_json
+            description: Full row content as JSON string

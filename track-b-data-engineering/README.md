@@ -20,6 +20,9 @@ This is a proof of concept, not a production deployment. The scaffold demonstrat
 | RisingWave streaming SQL (`streaming/risingwave_views.sql`) | Defined                |
 | Redpanda event seeder (`streaming/redpanda_seed.py`)     | Defined                   |
 | DuckDB analytical demo (`notebooks/duckdb_iceberg_demo.py`) | Defined                |
+| dbt project (`dbt/`) with three silver + two gold models and dbt_utils tests | Implemented |
+| Python-ported section detector (`dagster_project/section_detector.py`) | Implemented |
+| pytest suite (`tests/test_section_detector.py`)          | 8 tests, mirrors Track A surface |
 
 ---
 

@@ -1,0 +1,38 @@
+# dbt project for Track B.
+#
+# Materialises silver and gold layers on top of Iceberg bronze tables.
+# Uses dbt-duckdb to query Iceberg through DuckDB's iceberg extension,
+# which avoids the need for a separate Spark cluster while remaining
+# Iceberg-native end-to-end.
+
+name: inventoryflow_catalog
+version: '1.0.0'
+config-version: 2
+profile: inventoryflow
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  inventoryflow_catalog:
+    bronze:
+      # Bronze is read-only — declared as sources, not built by dbt.
+      +materialized: view
+    silver:
+      +materialized: table
+      +schema: silver
+    gold:
+      +materialized: table
+      +schema: gold
+      +on_schema_change: append_new_columns
+
+vars:
+  iceberg_namespace: inventoryflow
+  iceberg_catalog: iceberg_warehouse

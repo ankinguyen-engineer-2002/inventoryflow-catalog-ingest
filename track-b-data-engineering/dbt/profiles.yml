@@ -1,0 +1,27 @@
+# dbt-duckdb profile. Points DuckDB at the Iceberg REST catalog
+# defined in docker-compose.yml (catalog at http://localhost:8181,
+# warehouse at s3://catalog-warehouse on MinIO).
+#
+# In production, swap `path` for a persistent DuckDB file and ensure
+# the iceberg + httpfs extensions are pre-installed in the dbt-duckdb
+# image.
+
+inventoryflow:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ":memory:"
+      extensions:
+        - iceberg
+        - httpfs
+      settings:
+        s3_endpoint: localhost:9100
+        s3_access_key_id: minioadmin
+        s3_secret_access_key: minioadmin
+        s3_use_ssl: false
+        s3_url_style: path
+      attach:
+        - path: "http://localhost:8181"
+          alias: iceberg_warehouse
+          type: iceberg

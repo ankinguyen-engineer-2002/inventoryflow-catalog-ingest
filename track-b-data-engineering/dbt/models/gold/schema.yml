@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: gold_products_mart
+    description: |
+      Denormalised products mart matching the serving-layer schema in
+      Track A. Synced to PostgreSQL by an external dbt-postgres run or
+      CDC bridge in production.
+    columns:
+      - name: dealer_id
+        tests: [not_null]
+      - name: part_number
+        tests: [not_null]
+      - name: fitment
+        description: JSON array of {year, make, model_code, variant, confidence}
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - dealer_id
+            - part_number
+
+  - name: gold_marketplace_view
+    description: Marketplace-ready projection. View, not table.
+    columns:
+      - name: sku
+        tests: [not_null]
+      - name: title
+        tests: [not_null]
+      - name: price_usd
+        tests:
+          - dbt_utils.not_negative
