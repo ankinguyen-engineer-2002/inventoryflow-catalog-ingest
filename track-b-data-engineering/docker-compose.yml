@@ -62,6 +62,12 @@ services:
       CATALOG_WAREHOUSE: s3://catalog-warehouse/
       CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
       CATALOG_S3_ENDPOINT: http://minio:9000
+      # Force path-style URLs (s3://endpoint/bucket/key) — MinIO doesn't
+      # support virtual-hosted addressing (`bucket.endpoint`) the way
+      # AWS S3 does, so without this the AWS SDK tries to resolve
+      # `catalog-warehouse.minio` and fails with UnknownHostException.
+      CATALOG_S3_PATH-STYLE-ACCESS: "true"
+      CATALOG_S3_REMOTE-SIGNING-ENABLED: "false"
     depends_on:
       - minio-init
     healthcheck:
