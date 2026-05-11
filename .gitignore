@@ -1,0 +1,99 @@
+# ────────────────────────────────────────────────────────────────
+# Node / TypeScript (Track A)
+# ────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+.yarn/
+coverage/
+.nyc_output/
+
+# ────────────────────────────────────────────────────────────────
+# Python (Track B)
+# ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# dbt
+target/
+dbt_packages/
+logs/
+.dbt/
+
+# ────────────────────────────────────────────────────────────────
+# Secrets / env
+# ────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+!*.example
+!.env.example
+
+# ────────────────────────────────────────────────────────────────
+# Editors / OS
+# ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ────────────────────────────────────────────────────────────────
+# Local data / artifacts
+# ────────────────────────────────────────────────────────────────
+# Never commit the raw 241MB xlsx itself
+shared/sample-data/*.xlsx
+shared/sample-data/*.xls
+
+# Delta Lake local state (Track B)
+track-b-data-engineering/local-data/
+track-b-data-engineering/_delta_log/
+track-b-data-engineering/.prefect/
+
+# MinIO local data
+minio-data/
+
+# Postgres local data
+postgres-data/
+
+# Redis local data
+redis-data/
+
+# ────────────────────────────────────────────────────────────────
+# DELIBERATELY COMMITTED — do not gitignore these
+# ────────────────────────────────────────────────────────────────
+# shared/llm-cache.sqlite        ← LLM response cache (zero-API-cost demo)
+# shared/handoff/*.json          ← Claude Code handoff artifacts (audit trail)
+
+# ────────────────────────────────────────────────────────────────
+# Build / temp
+# ────────────────────────────────────────────────────────────────
+tmp/
+.tmp/
+*.log
+*.pid
+*.seed
+*.pid.lock
+.cache/
+
+# ────────────────────────────────────────────────────────────────
+# Docker
+# ────────────────────────────────────────────────────────────────
+docker-compose.override.yml
