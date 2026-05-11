@@ -16,12 +16,12 @@ from .provider import (
     EnrichmentResponse,
 )
 
-
 PROMPT_TEMPLATE_VER = "ollama-translate-v1"
 
 _TRANSLATE_PROMPT = """You are a translator for a powersports motorcycle/ATV parts catalog.
 
-Translate this Chinese part name to natural English. Return ONLY the English translation, no explanation, no quotes, no extra punctuation.
+Translate this Chinese part name to natural English. Return ONLY the English translation,
+no explanation, no quotes, no extra punctuation.
 
 Chinese: {cn}
 

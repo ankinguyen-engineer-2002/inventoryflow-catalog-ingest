@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-
 HeaderKind = Literal["chassis", "engine", "chassis_u8"]
 
 

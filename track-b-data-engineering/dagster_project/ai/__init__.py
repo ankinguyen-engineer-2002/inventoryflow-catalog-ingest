@@ -9,13 +9,13 @@ Track A is automatically available to Track B — no duplicate calls,
 no duplicate spend.
 """
 
+from .factory import create_llm_provider
 from .provider import (
     EnrichmentField,
     EnrichmentRequest,
     EnrichmentResponse,
     ILLMProvider,
 )
-from .factory import create_llm_provider
 
 __all__ = [
     "EnrichmentField",

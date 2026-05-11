@@ -15,7 +15,6 @@ from .asset_checks import (
 from .assets import bronze_catalog_rows, gold_products_mart, silver_parts
 from .resources import default_resources
 
-
 defs = Definitions(
     assets=[
         bronze_catalog_rows,

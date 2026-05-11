@@ -20,7 +20,6 @@ import polars as pl
 from ..ai import EnrichmentRequest, create_llm_provider
 from ..resources import IcebergCatalogResource
 
-
 log = logging.getLogger(__name__)
 
 

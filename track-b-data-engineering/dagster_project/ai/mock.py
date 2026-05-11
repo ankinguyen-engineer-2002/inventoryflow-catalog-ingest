@@ -8,7 +8,6 @@ from .provider import (
     EnrichmentResponse,
 )
 
-
 KNOWN_TRANSLATIONS: dict[str, str] = {
     "把套": "handlebar grip",
     "组合开关": "multi-function switch",

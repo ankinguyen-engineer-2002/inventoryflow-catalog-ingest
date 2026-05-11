@@ -7,7 +7,10 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+# Pinned to 3.12.x: dagster-duckdb 0.25.x requires <3.13, and the broader
+# Dagster integration ecosystem is slow to ship 3.13 wheels. Revisit when
+# dagster-duckdb publishes a 3.13-compatible release (tracked upstream).
+python = ">=3.12,<3.13"
 
 # Compute
 polars = "^1.18"

@@ -8,16 +8,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
-
-import os
 
 from dagster import AssetSelection, materialize
 
 from ..assets import bronze_catalog_rows, gold_products_mart, silver_parts
 from ..resources import default_resources
-
 
 log = logging.getLogger(__name__)
 
@@ -27,8 +25,15 @@ def main(argv: list[str] | None = None) -> int:
         prog="track-b ingest",
         description="Run the Track B medallion pipeline end-to-end.",
     )
-    parser.add_argument("xlsx_path", help="Path to source xlsx (defaults to shared/sample-data/example.xlsx)")
-    parser.add_argument("--dry-run", action="store_true", help="Materialise bronze only; skip silver and gold")
+    parser.add_argument(
+        "xlsx_path",
+        help="Path to source xlsx (defaults to shared/sample-data/example.xlsx)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Materialise bronze only; skip silver and gold",
+    )
     parser.add_argument("--dealer-id", default=None, help="Override the default demo dealer UUID")
     args = parser.parse_args(argv)
 

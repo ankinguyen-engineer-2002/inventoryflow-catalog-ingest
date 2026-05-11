@@ -237,7 +237,7 @@ def gold_products_mart(
 # ─────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────
-def _ensure_namespace(catalog: "Catalog", namespace: str) -> None:
+def _ensure_namespace(catalog: Catalog, namespace: str) -> None:
     try:
         catalog.create_namespace(namespace)
     except Exception:
@@ -245,7 +245,7 @@ def _ensure_namespace(catalog: "Catalog", namespace: str) -> None:
         pass
 
 
-def _ensure_table(catalog: "Catalog", identifier: tuple[str, str], schema: object) -> object:
+def _ensure_table(catalog: Catalog, identifier: tuple[str, str], schema: object) -> object:
     try:
         return catalog.load_table(identifier)
     except Exception:

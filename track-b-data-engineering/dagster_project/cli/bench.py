@@ -16,11 +16,12 @@ from pathlib import Path
 
 import duckdb
 
-
 log = logging.getLogger(__name__)
 
 
-def _measure_fitment_query(con: duckdb.DuckDBPyConnection, iterations: int) -> dict[str, float | int]:
+def _measure_fitment_query(
+    con: duckdb.DuckDBPyConnection, iterations: int
+) -> dict[str, float | int]:
     """Time a fitment-lookup query repeated `iterations` times."""
     # Warm the planner.
     con.execute(

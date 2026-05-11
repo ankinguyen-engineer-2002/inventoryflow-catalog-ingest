@@ -12,7 +12,6 @@ from .mock import MockProvider
 from .ollama import OllamaProvider
 from .provider import ILLMProvider
 
-
 log = logging.getLogger(__name__)
 
 
