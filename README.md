@@ -43,10 +43,6 @@
 
 ## ⚡ At a glance
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
 ### 🎯 What it does
 
 Turns a **241 MB OEM Excel catalog** (110 sheets · 1,586 schematics · EN+CN multilingual) into a **clean Postgres catalog** with **JSONB fitment** and **R2-hosted schematic images**.
@@ -59,20 +55,15 @@ WHERE fitment @> '[{"make":"Kayo","model":"Storm 150","year":2022}]';
 -- ↑ <50 ms on 10M rows via GIN jsonb_path_ops
 ```
 
-</td>
-<td width="50%" valign="top">
-
 ### 🏆 What it proves
 
-- ✅ **Stack fit** — Track A is the exact JD stack
-- ✅ **Scale judgment** — Track B documents the migration path at 500+ dealers
-- ✅ **Cost economics** — `ILLMProvider` abstraction enables $0 reviewer runs *and* production cost control
-- ✅ **AI tooling literacy** — 9 ADRs visibly document what I overrode from Claude/Cursor
-- ✅ **Data engineering depth** — 10 mess patterns caught by parsing the file, not the brief
-
-</td>
-</tr>
-</table>
+| Signal                       | Evidence                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| 🎯 **Stack fit**             | Track A is the exact JD stack — TS · Node · PG · Redis · Docker          |
+| 📈 **Scale judgment**        | Track B documents the migration path at 500+ dealers ([ADR-009](./docs/decisions/ADR-009-when-to-switch-tracks.md)) |
+| 💰 **Cost economics**        | `ILLMProvider` abstraction enables $0 reviewer runs *and* production cost control |
+| 🤖 **AI tooling literacy**   | 9 ADRs visibly document what I overrode from Claude/Cursor               |
+| 🧰 **Data engineering depth**| 10 mess patterns caught by parsing the file, not just reading the brief |
 
 ---
 
