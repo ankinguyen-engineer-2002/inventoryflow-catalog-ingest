@@ -18,8 +18,9 @@ ARG NODE_VERSION=22-alpine
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 
-# Enable pnpm via corepack (bundled with Node 22)
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# Enable pnpm via corepack (bundled with Node 22). Version pinned to match
+# package.json's `packageManager` field.
+RUN corepack enable && corepack prepare pnpm@10.4.0 --activate
 
 # Copy only the files needed for dependency resolution to maximise cache hits.
 COPY package.json pnpm-lock.yaml .npmrc ./
@@ -46,10 +47,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
+# Shared corepack cache visible to both root and node so the prepared
+# pnpm binary survives the USER switch.
+ENV COREPACK_HOME=/usr/local/share/corepack
 
 # corepack must run as root to symlink into /usr/local/bin. Drop privileges
 # afterwards via USER node (uid 1000 pre-created on the alpine node image).
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# Chown /app so pnpm install can write its lockfile and temp files as `node`.
+RUN corepack enable \
+ && corepack prepare pnpm@10.4.0 --activate \
+ && chown -R node:node /app "$COREPACK_HOME"
 
 USER node
 

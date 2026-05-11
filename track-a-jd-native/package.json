@@ -4,6 +4,7 @@
   "private": true,
   "description": "InventoryFlow catalog ingestion pipeline — Track A (JD-native TypeScript)",
   "type": "module",
+  "packageManager": "pnpm@10.4.0",
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=9.0.0"
