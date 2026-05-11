@@ -38,7 +38,7 @@ const Schema = z.object({
   LLM_PROVIDER: z
     .enum(["mock", "cached", "claude-code-handoff", "ollama", "gemini", "anthropic"])
     .default("cached"),
-  LLM_CACHE_PATH: z.string().default("../shared/llm-cache.sqlite"),
+  LLM_CACHE_PATH: z.string().default("../shared/llm-cache.jsonl"),
 
   // Provider-specific (optional)
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),

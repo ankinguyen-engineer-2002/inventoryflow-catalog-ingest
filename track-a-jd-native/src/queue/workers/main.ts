@@ -8,6 +8,7 @@
 import "./parse-file.worker.js";
 import "./parse-sheet.worker.js";
 import "./upload-image.worker.js";
+import "./stream-inventory.worker.js";
 import { logger } from "../../lib/logger.js";
 import { closeQueues } from "../queues.js";
 import { closeDb } from "../../storage/db/client.js";

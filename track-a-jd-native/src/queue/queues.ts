@@ -13,15 +13,16 @@ import { Queue, type QueueOptions, type WorkerOptions } from "bullmq";
 import IORedis from "ioredis";
 import { env } from "../lib/env.js";
 
+// BullMQ disallows ':' in queue names (it's their internal key separator).
 export const QUEUE_NAMES = {
-  parseFile: "q:parse-file",
-  parseSheet: "q:parse-sheet",
-  uploadImage: "q:upload-image",
-  enrichLlm: "q:enrich-llm",
-  streamInventory: "q:stream-inventory",
-  streamPricing: "q:stream-pricing",
-  streamOrder: "q:stream-order",
-  dlq: "q:dlq",
+  parseFile: "parse-file",
+  parseSheet: "parse-sheet",
+  uploadImage: "upload-image",
+  enrichLlm: "enrich-llm",
+  streamInventory: "stream-inventory",
+  streamPricing: "stream-pricing",
+  streamOrder: "stream-order",
+  dlq: "dlq",
 } as const;
 
 /** Shared Redis connection. BullMQ recommends one IORedis instance per queue/worker pair, but we deliberately share for simpler resource accounting. */
