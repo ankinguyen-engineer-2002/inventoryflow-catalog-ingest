@@ -23,7 +23,6 @@ from pyiceberg.catalog import Catalog
 
 from .resources import IcebergCatalogResource, SourceXlsxResource
 
-
 NAMESPACE = "inventoryflow"
 
 

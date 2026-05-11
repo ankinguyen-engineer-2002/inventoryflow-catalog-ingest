@@ -44,14 +44,15 @@ RUN pnpm tsc -p tsconfig.build.json
 FROM node:${NODE_VERSION} AS runtime
 WORKDIR /app
 
-# Drop privileges. Alpine ships with the `node` user pre-created (uid 1000).
-USER node
-
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
 
-# Re-install with --prod to drop devDependencies from the final image.
+# corepack must run as root to symlink into /usr/local/bin. Drop privileges
+# afterwards via USER node (uid 1000 pre-created on the alpine node image).
 RUN corepack enable && corepack prepare pnpm@10 --activate
+
+USER node
+
 COPY --chown=node:node package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --prod --prefer-offline
 
