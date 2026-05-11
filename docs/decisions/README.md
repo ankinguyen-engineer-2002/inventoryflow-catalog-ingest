@@ -13,8 +13,13 @@
 | 5  | Accepted   | [Section detection via header regex (not row-index)](ADR-005-section-detection-strategy.md) |
 | 6  | Accepted   | [Part number aliases for OEM rename history](ADR-006-part-number-aliases.md)  |
 | 7  | Accepted   | [LLM provider cost strategy + zero-API-key submission](ADR-007-llm-provider-cost-strategy.md) |
-| 8  | Accepted   | [Medallion architecture for Track B](ADR-008-medallion-architecture-track-b.md) |
+| 8  | **Accepted (rewritten v2)** | [Medallion on Iceberg + Dagster (Track B v2)](ADR-008-medallion-iceberg-dagster.md) |
 | 9  | Accepted   | [Trigger criteria for migrating Track A → Track B](ADR-009-when-to-switch-tracks.md) |
+| 10 | **Accepted (new)** | [Batch + near-realtime streaming hybrid](ADR-010-batch-streaming-hybrid.md)  |
+| 11 | **Accepted (new)** | [Multi-tenant isolation strategy](ADR-011-multi-tenant-isolation.md)         |
+| 12 | **Accepted (new)** | [Data contracts + schema registry](ADR-012-data-contracts-schema-registry.md) |
+| 13 | **Accepted (new)** | [DR + BCP with RPO/RTO targets](ADR-013-dr-bcp-rpo-rto.md)                   |
+| 14 | **Accepted (new)** | [Metadata-driven control plane](ADR-014-metadata-driven-control-plane.md) ⭐ |
 
 ## Template
 

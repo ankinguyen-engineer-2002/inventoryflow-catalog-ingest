@@ -11,21 +11,25 @@
 
 <br/>
 
-**Track A — JD-Native**
+**Track A — JD-Native** *(batch + near-realtime streaming)*
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](#)
 [![Node](https://img.shields.io/badge/Node.js-22%20LTS-339933?logo=nodedotjs&logoColor=white)](#)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](#)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](#)
 [![BullMQ](https://img.shields.io/badge/BullMQ-queues-c92a2a)](#)
+[![PG LISTEN/NOTIFY](https://img.shields.io/badge/PG-LISTEN%2FNOTIFY-336791)](#)
 [![Cloudflare R2](https://img.shields.io/badge/Cloudflare-R2-F38020?logo=cloudflare&logoColor=white)](#)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](#)
 
-**Track B — Big-Data DE Roadmap**
+**Track B — Modern OSS DE (2026 trendy stack)**
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](#)
 [![Polars](https://img.shields.io/badge/Polars-DataFrames-F0AC2D)](#)
-[![Delta Lake](https://img.shields.io/badge/Delta%20Lake-3.x-00ADD4)](#)
+[![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-lakehouse-1f6feb)](#)
 [![dbt](https://img.shields.io/badge/dbt-core-FF694A?logo=dbt&logoColor=white)](#)
-[![Prefect](https://img.shields.io/badge/Prefect-2.x-070A52?logo=prefect&logoColor=white)](#)
+[![Dagster](https://img.shields.io/badge/Dagster-asset--centric-654FF0?logo=dagster&logoColor=white)](#)
+[![Redpanda](https://img.shields.io/badge/Redpanda-Kafka_API-E8477B)](#)
+[![RisingWave](https://img.shields.io/badge/RisingWave-streaming_SQL-00A6D2)](#)
+[![DuckDB](https://img.shields.io/badge/DuckDB-analytics-FFF000?logo=duckdb&logoColor=black)](#)
 
 <br/>
 
@@ -37,7 +41,7 @@
 
 > [!NOTE]
 > **This is a senior-engineer take-home submission, not a deployed product.**
-> The repo ships as **source code + 1,179-line engineering plan + 9 ADRs + 16-dimension comparison matrix**. Every component runs locally — the reviewer pays nothing, signs up for nothing, enters no API key.
+> The repo ships as **source code + 1,500-line engineering plan (v2) + 14 ADRs + 18-dimension comparison matrix + v10 control-plane capability matrix**. Every component runs locally — the reviewer pays nothing, signs up for nothing, enters no API key.
 
 ---
 
@@ -115,7 +119,30 @@ flowchart LR
 
 **Track A is the recommendation.** Track B is the documented roadmap for when InventoryFlow hits ~500 dealers / 50 TB / 30% LLM-cost share. Migration triggers are quantified in **[ADR-009](./docs/decisions/ADR-009-when-to-switch-tracks.md)** — not "when it feels needed", but six measurable thresholds.
 
+**Both tracks support batch + near-realtime streaming** — see [ADR-010](./docs/decisions/ADR-010-batch-streaming-hybrid.md). Track A streams via Fastify webhooks + PG `LISTEN/NOTIFY` (within JD stack). Track B streams via Redpanda + RisingWave writing to the same Iceberg tables as the batch path (Kappa-lite via lakehouse).
+
 Full rationale: **[ADR-001](./docs/decisions/ADR-001-two-track-monorepo.md)** · **[COMPARISON.md](./docs/COMPARISON.md)**
+
+---
+
+## 🏛 v10 senior-grade control plane
+
+This submission adopts **metadata-driven control plane** + **freshness-based scheduling** + **multi-pattern ingestion** patterns (the 2026 senior-DE standard). Capability coverage:
+
+| Capability                          | Track A v2 | Track B v2 | ADR                                     |
+| ----------------------------------- | ---------- | ---------- | --------------------------------------- |
+| Metadata-driven dispatch (3 registry tables) | ✅ | ✅ + Dagster dynamic assets | [ADR-014](./docs/decisions/ADR-014-metadata-driven-control-plane.md) ⭐ |
+| Freshness-based scheduling          | ✅ source SHA-256 + SLA | ⭐ Dagster `AutoMaterializePolicy` + `FreshnessPolicy` | ADR-014 |
+| Multi-pattern handlers (FILE/API/CDC/Stream) | ✅ | ✅ | ADR-014 |
+| Idempotency + replay                | ✅ SHA-256 | ⭐ Iceberg `VERSION AS OF` | ADR-003 |
+| Column-level lineage                | ⚠️ partial | ⭐ Dagster + OpenLineage | ADR-008 |
+| Schema registry                     | ⚠️ rules.yaml | ⭐ Iceberg catalog | ADR-012 |
+| Data quality contracts              | ⚠️ Zod | ⭐ Dagster asset checks | ADR-012 |
+| Multi-tenant isolation              | ✅ RLS + dealer_id partition | ✅ Iceberg partition | ADR-011 |
+| Batch + streaming hybrid            | ✅ PG NOTIFY + outbox | ✅ Redpanda + RisingWave | ADR-010 |
+| RPO/RTO targets + DR runbook        | ✅ documented | ✅ Iceberg time travel | ADR-013 |
+
+Full **24-capability matrix** in [`PLAN.md §13`](./PLAN.md#13-v10-control-plane-capability-matrix). Track A v2 scores 19/24 (79%); Track B v2 scores 22/24 (92%).
 
 ---
 
