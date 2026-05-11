@@ -26,8 +26,12 @@
     "db:drop": "drizzle-kit drop",
     "ingest": "tsx src/cli/ingest.ts",
     "ingest:dryrun": "tsx src/cli/ingest.ts --dry-run",
+    "ingest:full": "pnpm ingest \"$@\" && pnpm ingest:references \"$@\" && pnpm populate:models && pnpm seed:mdcp && pnpm enrich --mode audit --limit 60 --",
     "enrich": "tsx src/cli/enrich.ts",
     "enrich:dump": "tsx src/cli/enrich.ts --dump-tasks",
+    "populate:models": "tsx src/cli/populate-vehicle-models.ts",
+    "ingest:references": "tsx src/cli/ingest-reference-sheets.ts",
+    "seed:mdcp": "tsx src/cli/seed-mdcp.ts",
     "worker": "tsx src/queue/workers/main.ts",
     "api": "tsx src/api/server.ts",
     "dev": "tsx watch src/api/server.ts"

@@ -50,16 +50,29 @@ cp /path/to/"Copy of Example Data for Engineer.xlsx" \
 
 ---
 
-## 3. Run the ingest
+## 3. Run the full pipeline
+
+**One command runs everything** — main ingest, reference-sheets pass for the
+~12 exception sheets, vehicle-models derivation, MDCP seed, and LLM audit:
 
 ```bash
 cd track-a-jd-native    # if you're not already there
-pnpm ingest ../shared/sample-data/example.xlsx
+pnpm ingest:full ../shared/sample-data/example.xlsx
 ```
 
-Expected runtime: **~30 seconds** on an M2 Mac. Output ends with a JSON summary including `rowsSucceeded` and `imagesUploaded`.
+Expected runtime: **~60 seconds** on an M2 Mac, $0 in API spend (LLM hits cache).
 
-If you want to see the pre-database parse output without writing anything, add `--dry-run`:
+If you'd rather run each stage individually:
+
+```bash
+pnpm ingest            ../shared/sample-data/example.xlsx    # parts catalog (96 sheets)
+pnpm ingest:references ../shared/sample-data/example.xlsx    # ~12 spec sheets → reference_specs
+pnpm populate:models                                         # derive vehicle_models from fitments
+pnpm seed:mdcp                                               # seed dealers + ingestion_patterns + bindings
+pnpm enrich --mode audit --limit 60                          # LLM cross-validation of 60 rows
+```
+
+If you want to see the pre-database parse output without writing anything:
 
 ```bash
 pnpm ingest:dryrun ../shared/sample-data/example.xlsx --sheet "FOXStorm 70 AY70-2" --limit 5
@@ -71,28 +84,48 @@ pnpm ingest:dryrun ../shared/sample-data/example.xlsx --sheet "FOXStorm 70 AY70-
 
 The test PDF asks for: **clean database** with **part_number / name_en / name_cn**, **schematic images in R2**, and a **JSONB column for year/make/model fitment**. Here are the commands to confirm each.
 
-### 4.1 Clean database
+### 4.1 Clean database — every table populated
 
 ```bash
 docker exec ifc_postgres psql -U dev -d catalog -c "
-  SELECT
-    (SELECT COUNT(*) FROM products)          AS products,
-    (SELECT COUNT(DISTINCT part_number_norm) FROM products) AS distinct_parts,
-    (SELECT COUNT(*) FROM product_images)    AS image_links,
-    (SELECT COUNT(DISTINCT sha256) FROM product_images) AS distinct_images,
-    (SELECT status FROM ingest_runs ORDER BY started_at DESC LIMIT 1) AS last_status;
+  SELECT 'products' AS t,                     COUNT(*) FROM products UNION ALL
+  SELECT 'product_images',                    COUNT(*) FROM product_images UNION ALL
+  SELECT 'reference_specs',                   COUNT(*) FROM reference_specs UNION ALL
+  SELECT 'ingest_audit',                      COUNT(*) FROM ingest_audit UNION ALL
+  SELECT 'part_number_aliases',               COUNT(*) FROM part_number_aliases UNION ALL
+  SELECT 'vehicle_models',                    COUNT(*) FROM vehicle_models UNION ALL
+  SELECT 'stream_events',                     COUNT(*) FROM stream_events UNION ALL
+  SELECT 'stream_outbox',                     COUNT(*) FROM stream_outbox UNION ALL
+  SELECT 'ingest_runs',                       COUNT(*) FROM ingest_runs UNION ALL
+  SELECT 'ingestion_patterns',                COUNT(*) FROM ingestion_patterns UNION ALL
+  SELECT 'dealer_pattern_bindings',           COUNT(*) FROM dealer_pattern_bindings UNION ALL
+  SELECT 'dealers',                           COUNT(*) FROM dealers
+  ORDER BY 2 DESC;
 "
 ```
 
-Expected:
+Expected (after `pnpm ingest:full`):
 
 ```
- products | distinct_parts | image_links | distinct_images | last_status
-----------+----------------+-------------+-----------------+-------------
-     3938 |           3938 |       11098 |             382 | PARTIAL
+            t            | count
+-------------------------+-------
+ product_images          | 10524     ← schematic image associations
+ products                |  3938     ← test-PDF priority output
+ reference_specs         |   371     ← 12 exception sheets parsed
+ ingest_audit            |   ~120    ← LLM call history (grows per run)
+ part_number_aliases     |    50     ← engine sheets OLD/NEW pairs
+ vehicle_models          |    35     ← derived from products.fitment
+ stream_events           |     0+    ← grows when you POST /events/*
+ stream_outbox           |     0+    ← grows alongside stream_events
+ ingest_runs             |     5+    ← one row per ingest invocation
+ ingestion_patterns      |     3     ← MDCP handler registry
+ dealer_pattern_bindings |     3     ← MDCP per-tenant config
+ dealers                 |     1     ← Kayo OEM Demo Dealer
 ```
 
-> "PARTIAL" because some rows in the source xlsx are blank-row separators that we deliberately skip. See `docs/TRACK_A.md §3`.
+Every table is populated; what's there exists by design rather than by accident.
+
+> Run status of the main ingest is `PARTIAL` because some rows in the source xlsx are blank-row separators that the parser deliberately skips. See `docs/TRACK_A.md §3` for the row-accounting breakdown.
 
 ### 4.2 Sample rows — `part_number / name_en / name_cn`
 
@@ -147,7 +180,69 @@ Sample output:
              |                       | ]
 ```
 
-### 4.4 Query parts that fit a vehicle — `@>` containment
+### 4.4a Reference sheets (the 12 "exception" sheets) — `reference_specs`
+
+The main parts catalog uses three regular header signatures (`chassis`,
+`engine`, `chassis_u8`). The xlsx also has ~12 sheets with completely
+different schemas — spark plugs by model, carburetor jet sizes, wheel
+bolt patterns, etc. — that the main parser intentionally skips. They're
+loaded by `pnpm ingest:references` into a separate table keyed by category.
+
+```bash
+docker exec ifc_postgres psql -U dev -d catalog -c "
+  SELECT category, COUNT(*) AS rows
+  FROM reference_specs
+  GROUP BY category
+  ORDER BY rows DESC;
+"
+```
+
+Example: lookup spark plug equivalencies by model
+
+```bash
+docker exec ifc_postgres psql -U dev -d catalog -c "
+  SELECT model_code, attributes
+  FROM reference_specs
+  WHERE category = 'spark_plugs'
+  LIMIT 5;
+"
+```
+
+### 4.4b Vehicle dimension table — `vehicle_models`
+
+Derived post-ingest from `products.fitment` (distinct tuples). Used for
+analytics joins and as a DQ target ("does fitment.model_code exist in
+vehicle_models?").
+
+```bash
+docker exec ifc_postgres psql -U dev -d catalog -c "
+  SELECT make, model_code, year_start, year_end, variant
+  FROM vehicle_models
+  ORDER BY model_code, year_start NULLS LAST
+  LIMIT 10;
+"
+```
+
+### 4.4c MDCP control-plane tables — `dealers`, `ingestion_patterns`, `dealer_pattern_bindings`
+
+ADR-014's metadata-driven dispatch. Seeded by `pnpm seed:mdcp` with one
+realistic example each so the relationship is inspectable.
+
+```bash
+docker exec ifc_postgres psql -U dev -d catalog -c "
+  SELECT d.name AS dealer, p.pattern_name, p.pattern_type, b.schedule
+  FROM dealer_pattern_bindings b
+  JOIN dealers d            ON d.id = b.dealer_id
+  JOIN ingestion_patterns p ON p.pattern_name = b.pattern_name;
+"
+```
+
+The dispatcher loop that *consumes* these bindings is documented as the
+next milestone in ADR-014 — the tables and relationships are scaffolded;
+runtime selection by `LLM_PROVIDER`-style env-driven loop is the production
+follow-up.
+
+### 4.4d Query parts that fit a vehicle — `@>` containment
 
 This is the access pattern the test was designed around.
 
