@@ -21,7 +21,7 @@
  */
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
-import { statSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { sql, closeDb } from "../storage/db/client.js";
 import { parseFileQueue } from "../queue/queues.js";
 import { logger } from "../lib/logger.js";
@@ -214,8 +214,7 @@ async function dispatchBinding(b: Binding): Promise<void> {
 }
 
 function sha256OfFile(path: string): string {
-  const buf = require("node:fs").readFileSync(path);
-  return createHash("sha256").update(buf).digest("hex");
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 /** Parse ISO 8601 duration like PT24H, PT5M, PT1H30M into milliseconds. */
@@ -238,6 +237,3 @@ main()
     await closeDb().catch(() => {});
     process.exit(1);
   });
-
-// stat type used only to satisfy module surface
-void statSync;

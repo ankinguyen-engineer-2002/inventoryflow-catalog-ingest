@@ -88,7 +88,7 @@ export class OllamaProvider implements ILLMProvider {
       if (!res.ok) {
         const text = await res.text();
         log.error({ status: res.status, text }, "ollama upstream error");
-        return errorResponse(req, this.name, `http_${res.status}`);
+        return errorResponse(req, this.name);
       }
 
       const data = (await res.json()) as {
@@ -121,7 +121,7 @@ export class OllamaProvider implements ILLMProvider {
       };
     } catch (err) {
       log.error({ err: (err as Error).message, model: this.opts.model }, "ollama call failed");
-      return errorResponse(req, this.name, (err as Error).message);
+      return errorResponse(req, this.name);
     } finally {
       clearTimeout(timeout);
     }
@@ -177,7 +177,7 @@ function emptyInputResponse(req: EnrichmentRequest, name: string): EnrichmentRes
   };
 }
 
-function errorResponse(req: EnrichmentRequest, name: string, reason: string): EnrichmentResponse {
+function errorResponse(req: EnrichmentRequest, name: string): EnrichmentResponse {
   return {
     id: req.id,
     field: req.field,
@@ -190,5 +190,4 @@ function errorResponse(req: EnrichmentRequest, name: string, reason: string): En
       costUsd: 0,
     },
   };
-  void reason;
 }

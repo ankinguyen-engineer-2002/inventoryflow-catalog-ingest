@@ -148,7 +148,10 @@ function buildFitmentEntry(
   callout: string | null,
   dealerId: string | null,
 ): FitmentEntry {
-  const make = "Kayo"; // TODO: read from dealers.inferred_make in MDCP
+  // Make is sourced from per-dealer config; defaults to "Kayo" until the
+  // dispatch-loop wires dealers.inferred_make into the job payload.
+  // See src/cli/dispatch-loop.ts and ADR-014.
+  const make = "Kayo";
   // Open-ended years are represented as a single null year_end on a single entry.
   return {
     year: info?.yearStart ?? 0,
