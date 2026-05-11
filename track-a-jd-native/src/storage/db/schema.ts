@@ -109,6 +109,10 @@ export const products = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
+    // NB: this index is recreated with NULLS NOT DISTINCT in
+    //     migrations/0001_nulls_not_distinct.sql (Drizzle Kit 0.30 doesn't
+    //     model the modifier yet). The schema-level constraint here is the
+    //     close-enough fallback for typing; runtime DDL is the migration.
     uniqueIndex("ux_products_partnum_dealer").on(t.partNumberNorm, t.sourceDealerId),
     index("ix_products_fitment_gin").using(
       "gin",

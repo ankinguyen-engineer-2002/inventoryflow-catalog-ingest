@@ -12,21 +12,25 @@
  * See ADR-005 for the design reasoning.
  */
 import type { CellValue, SheetRow } from "./xlsx-reader.js";
+import { cellToString } from "./cell-utils.js";
 
 /** A header signature is the set of column labels we expect, in order. */
 export interface HeaderSignature {
-  readonly kind: "chassis" | "engine" | "reference";
+  readonly kind: "chassis" | "engine" | "chassis_u8" | "reference";
   readonly columns: ReadonlyArray<string>;
   /**
    * Required columns — a header row must contain all of these (in any cell).
    * Less strict than full order match, accommodating slight column reordering.
    */
   readonly required: ReadonlyArray<string>;
+  /** Which column holds the canonical part number for this schema. */
+  readonly partNumberColumn: string;
 }
 
 /* The two canonical signatures observed in the Kayo sample.
  * New dealer schemas can be appended via `rules.yaml` and merged in here. */
 export const SIGNATURES: ReadonlyArray<HeaderSignature> = [
+  // Variant 1: classic chassis sheets ("FOXStorm 70 AY70-2 ", etc.)
   {
     kind: "chassis",
     columns: [
@@ -41,7 +45,9 @@ export const SIGNATURES: ReadonlyArray<HeaderSignature> = [
       "Retail",
     ],
     required: ["No.", "Part Number", "EN name", "CN name"],
+    partNumberColumn: "Part Number",
   },
+  // Variant 2: engine sheets ("FOXStorm 70 AY70-2 Engine ", etc.)
   {
     kind: "engine",
     columns: [
@@ -56,6 +62,28 @@ export const SIGNATURES: ReadonlyArray<HeaderSignature> = [
       "Retail",
     ],
     required: ["OLD PART NUMBER", "NEW PART NUMBER", "EN name", "CN name"],
+    partNumberColumn: "NEW PART NUMBER",
+  },
+  // Variant 3: EPA / U8-style sheets (sheet name like "AT110 EPA").
+  // "U8 Code" is the canonical part number; "Model" denormalises the
+  // vehicle code into each row (we ignore it here — sheet name + fitment
+  // resolver give us the same info).
+  {
+    kind: "chassis_u8",
+    columns: [
+      "No.",
+      "U8 Code",
+      "Model",
+      "EN name",
+      "CN name",
+      "Specifications in CN",
+      "Qty/vehicle",
+      "Dealer",
+      "QTY",
+      "Retail",
+    ],
+    required: ["No.", "U8 Code", "EN name", "CN name"],
+    partNumberColumn: "U8 Code",
   },
 ];
 
@@ -219,8 +247,7 @@ function firstNonEmpty(values: ReadonlyArray<CellValue>): string | null {
   return null;
 }
 
-/** Trim + normalise a cell value to a comparable string label. */
+/** Trim + normalise a cell value to a comparable string label. Handles RichText. */
 function trimCellLabel(v: CellValue): string {
-  if (v === null || v === undefined) return "";
-  return String(v).trim();
+  return cellToString(v) ?? "";
 }
