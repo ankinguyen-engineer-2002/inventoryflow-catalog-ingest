@@ -6,6 +6,18 @@ Notable changes to this submission. Format: [Keep a Changelog](https://keepachan
 
 ## [Unreleased]
 
+### Day 5 — Track A documentation consolidated
+
+- Single canonical `docs/TRACK_A.md` consolidates all Track A documentation:
+  architecture, data pipelines, configuration, verification, scaling
+  roadmap (phases two and three), free-at-scale deployment patterns,
+  operational concerns, trade-offs, migration path to Track B,
+  command reference, environment variables, and query cookbook.
+- Removed `docs/RECRUITER_GUIDE.md`; its content is integrated into
+  Section 7 (Configuration) and Section 8 (Verification) of TRACK_A.md.
+- Updated README.md primary navigation to point to TRACK_A.md as the
+  single Track A reference.
+
 ### Day 4 — 2026-05-11 (Track A complete)
 
 **M4 — LLM enrichment wired into the data pipeline.**

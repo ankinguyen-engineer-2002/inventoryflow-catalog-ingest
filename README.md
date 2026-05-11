@@ -33,7 +33,7 @@
 
 <br/>
 
-[**🛠 Recruiter Guide**](./docs/RECRUITER_GUIDE.md)  ·  [**📐 Track A Write-up**](./docs/TRACK_A.md)  ·  [**📖 Read the Plan**](./PLAN.md)  ·  [**⚖️ Compare Tracks**](./docs/COMPARISON.md)  ·  [**🏛 ADRs**](./docs/decisions/)  ·  [**❓ Open Questions**](./docs/QUESTIONS_FOR_RECRUITER.md)
+[**📐 Track A Documentation**](./docs/TRACK_A.md)  ·  [**📖 Master Plan**](./PLAN.md)  ·  [**⚖️ Track A vs Track B**](./docs/COMPARISON.md)  ·  [**🏛 Architecture Decisions**](./docs/decisions/)  ·  [**❓ Open Questions**](./docs/QUESTIONS_FOR_RECRUITER.md)
 
 </div>
 
