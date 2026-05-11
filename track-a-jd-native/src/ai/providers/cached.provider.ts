@@ -80,11 +80,16 @@ export class CachedLLMProvider implements ILLMProvider {
       created_at: new Date().toISOString(),
     };
 
-    this.index.set(key, entry);
-    try {
-      appendFileSync(this.cachePath, JSON.stringify(entry) + "\n");
-    } catch (err) {
-      logger.warn({ err, key }, "cache write failed; continuing without cache");
+    // Never cache null results. A null usually means "handoff pending" —
+    // caching it would freeze the pipeline at "no answer" instead of letting
+    // a later handoff results file unlock the cache.
+    if (enriched.result !== null) {
+      this.index.set(key, entry);
+      try {
+        appendFileSync(this.cachePath, JSON.stringify(entry) + "\n");
+      } catch (err) {
+        logger.warn({ err, key }, "cache write failed; continuing without cache");
+      }
     }
 
     return enriched;

@@ -26,6 +26,8 @@
     "db:drop": "drizzle-kit drop",
     "ingest": "tsx src/cli/ingest.ts",
     "ingest:dryrun": "tsx src/cli/ingest.ts --dry-run",
+    "enrich": "tsx src/cli/enrich.ts",
+    "enrich:dump": "tsx src/cli/enrich.ts --dump-tasks",
     "worker": "tsx src/queue/workers/main.ts",
     "api": "tsx src/api/server.ts",
     "dev": "tsx watch src/api/server.ts"

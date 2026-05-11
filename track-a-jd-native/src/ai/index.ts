@@ -9,6 +9,8 @@ import { resolve } from "node:path";
 import { CachedLLMProvider } from "./providers/cached.provider.js";
 import { MockProvider } from "./providers/mock.provider.js";
 import { ClaudeCodeHandoffProvider } from "./providers/claude-code-handoff.provider.js";
+import { OllamaProvider } from "./providers/ollama.provider.js";
+import { AnthropicBatchProvider } from "./providers/anthropic-batch.provider.js";
 import type { ILLMProvider } from "./provider.js";
 import { logger } from "../lib/logger.js";
 
@@ -34,14 +36,24 @@ function pickUpstream(): ILLMProvider {
       });
 
     case "ollama":
-    case "gemini":
+      return new OllamaProvider({
+        baseUrl: env.OLLAMA_URL,
+        model: env.OLLAMA_MODEL,
+      });
+
     case "anthropic":
-      // These are documented production targets (see ADR-007) but not
-      // wired in this submission to keep the reviewer experience zero-cost.
-      logger.warn(
-        { provider: env.LLM_PROVIDER },
-        "provider stubbed — falling back to Mock to avoid surprise API calls",
-      );
+      if (!env.ANTHROPIC_API_KEY) {
+        logger.warn(
+          "LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY missing — falling back to Mock",
+        );
+        return new MockProvider();
+      }
+      return new AnthropicBatchProvider({ apiKey: env.ANTHROPIC_API_KEY });
+
+    case "gemini":
+      // Gemini free tier has data-training TOS risk for production dealer data.
+      // Stubbed by design (see ADR-007). Use Anthropic or Ollama in prod.
+      logger.warn("LLM_PROVIDER=gemini intentionally stubbed (TOS risk); using Mock");
       return new MockProvider();
 
     default:
