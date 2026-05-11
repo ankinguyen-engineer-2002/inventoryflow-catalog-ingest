@@ -10,11 +10,19 @@
 
 <br/>
 
-[![Test compliance](https://img.shields.io/badge/test_PDF_compliance-100%25-success?style=for-the-badge)](./SUBMISSION.md)
+[![Test compliance](https://img.shields.io/badge/test_PDF-100%25_compliance-success?style=for-the-badge)](./SUBMISSION.md)
 [![JD stack match](https://img.shields.io/badge/JD_stack-1%3A1_match-blue?style=for-the-badge)](#-solution-a-implemented)
-[![Reviewer cost](https://img.shields.io/badge/reviewer_cost-%240-success?style=for-the-badge)](./SUBMISSION.md)
-[![Build time](https://img.shields.io/badge/build_time-~12h_AI--assisted-orange?style=for-the-badge)](#-time-budget)
-[![Solutions](https://img.shields.io/badge/solutions-A_implemented_·_B_PoC_·_C_·_D-purple?style=for-the-badge)](#-the-four-solutions)
+[![Reviewer cost](https://img.shields.io/badge/reviewer-%240_cost-success?style=for-the-badge)](./SUBMISSION.md)
+[![Build time](https://img.shields.io/badge/built_in-~12h_AI--assisted-orange?style=for-the-badge)](#-time-budget)
+
+<br/>
+
+**Four solutions presented:**
+
+[![Solution A](https://img.shields.io/badge/🟢_Solution_A-IMPLEMENTED-2ea44f?style=for-the-badge)](./docs/TRACK_A.md)
+[![Solution B](https://img.shields.io/badge/🟡_Solution_B-PoC_SCAFFOLD-eab308?style=for-the-badge)](./track-b-data-engineering/)
+[![Solution C](https://img.shields.io/badge/🔵_Solution_C-MS_FABRIC_v10-0078d4?style=for-the-badge)](./docs/solutions/solution-c-microsoft-fabric.md)
+[![Solution D](https://img.shields.io/badge/🟣_Solution_D-AWS_BIG_DATA-ff9900?style=for-the-badge)](./docs/solutions/solution-d-aws-bigdata.md)
 
 <br/>
 
@@ -32,9 +40,9 @@
 What InventoryFlow asked:                What this submission delivers:
 
   Parse messy xlsx                        ✅ Solution A — implemented (TS/PG/Redis)
-  + clean DB                              ✅ Solution B — PoC (Polars/Iceberg/Dagster)
-  + R2 schematic images                   📐 Solution C — architecture (Cloudflare edge)
-  + JSON fitment column                   📐 Solution D — architecture (Kafka/Debezium/Materialize)
+  + clean DB                              ✅ Solution B — PoC (Polars/Iceberg/Dagster OSS)
+  + R2 schematic images                   📐 Solution C — architecture (Microsoft Fabric v10)
+  + JSON fitment column                   📐 Solution D — architecture (AWS big-data + streaming)
   + AI tooling
                                           + Real benchmarks, real sample output,
                                           + 14 ADRs, scaling roadmap, cost economics.
@@ -82,14 +90,14 @@ After running `pnpm ingest:full`, **every one of twelve tables is populated**:
 <tr>
 <th width="25%" align="center">🟢 Solution A<br/><sub>Implemented</sub></th>
 <th width="25%" align="center">🟡 Solution B<br/><sub>PoC scaffold</sub></th>
-<th width="25%" align="center">🔵 Solution C<br/><sub>Architecture</sub></th>
-<th width="25%" align="center">🟣 Solution D<br/><sub>Architecture</sub></th>
+<th width="25%" align="center">🔵 Solution C<br/><sub>Architecture only</sub></th>
+<th width="25%" align="center">🟣 Solution D<br/><sub>Architecture only</sub></th>
 </tr>
 <tr>
 <td align="center"><b>JD-Native</b></td>
 <td align="center"><b>Modern OSS DE</b></td>
-<td align="center"><b>Edge-First Serverless</b></td>
-<td align="center"><b>Real-Time CDC</b></td>
+<td align="center"><b>Microsoft Fabric v10</b></td>
+<td align="center"><b>AWS Big Data + Streaming</b></td>
 </tr>
 <tr>
 <td>
@@ -104,26 +112,26 @@ Polars · Iceberg · Dagster · dbt · Redpanda · RisingWave
 </td>
 <td>
 
-Cloudflare Workers · D1 · R2 · Workers KV · Durable Objects
+OneLake · Lakehouse · Data Factory · Eventhouse (KQL) · Direct Lake · Dataverse · Activator
 
 </td>
 <td>
 
-Debezium · Kafka · Materialize · ClickHouse · Kafka Connect
+S3 + Iceberg · Glue Catalog · Kinesis · MSK · Lambda · Step Functions · Athena · Redshift · DMS · DynamoDB
 
 </td>
 </tr>
 <tr>
 <td><b>Recommended for current stage</b><br/>under 500 dealers</td>
 <td>Migration target<br/>500–5,000 dealers</td>
-<td>Optional<br/>global edge SEO needs</td>
-<td>Optional<br/>sub-second marketplace sync</td>
+<td>Enterprise/Microsoft shops<br/>metadata-driven control plane</td>
+<td>Cloud-native big-data<br/>+ streaming at AWS scale</td>
 </tr>
 <tr>
 <td>~6h AI-assisted build</td>
 <td>~3h PoC scaffold</td>
-<td>~30min design + diagram</td>
-<td>~30min design + diagram</td>
+<td>~45min design + diagram</td>
+<td>~45min design + diagram</td>
 </tr>
 <tr>
 <td>
@@ -138,12 +146,12 @@ Debezium · Kafka · Materialize · ClickHouse · Kafka Connect
 </td>
 <td>
 
-[**Read Solution C →**](./docs/solutions/solution-c-edge-serverless.md)
+[**Read Solution C →**](./docs/solutions/solution-c-microsoft-fabric.md)
 
 </td>
 <td>
 
-[**Read Solution D →**](./docs/solutions/solution-d-realtime-cdc.md)
+[**Read Solution D →**](./docs/solutions/solution-d-aws-bigdata.md)
 
 </td>
 </tr>
@@ -418,8 +426,8 @@ inventoryflow-catalog-ingest/
 │   ├── bench/bench-results.json     Measured benchmark numbers
 │   ├── decisions/                   14 Architecture Decision Records
 │   └── solutions/
-│       ├── solution-c-edge-serverless.md
-│       └── solution-d-realtime-cdc.md
+│       ├── solution-c-microsoft-fabric.md    Enterprise / v10 control plane
+│       └── solution-d-aws-bigdata.md         Cloud-native big-data + streaming
 │
 ├── 🤖 shared/
 │   ├── llm-cache.jsonl              Pre-computed LLM responses (committed)
