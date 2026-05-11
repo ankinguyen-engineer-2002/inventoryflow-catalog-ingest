@@ -1,0 +1,4 @@
+dealer,pattern_name,pattern_type,schedule,freshness_sla
+Kayo OEM Demo Dealer,xlsx_oem_catalog_v1,FILE_BATCH,on-source-change,PT24H
+Kayo OEM Demo Dealer,lightspeed_inventory_webhook_v1,API_PUSH,event-driven,PT5M
+Kayo OEM Demo Dealer,postgres_cdc_to_marketplace_v1,CDC,event-driven,PT1M

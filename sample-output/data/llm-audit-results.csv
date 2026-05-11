@@ -1,0 +1,69 @@
+part_number,name_cn,dealer_supplied_en,llm_alternative_en,consensus,score
+902002-0031,转向冶金衬套,busher,steering column sintered bushing,disagree,0
+602001-0014,钢制方向把,black handle bar,steel handlebar,disagree,0
+903002-0013-02,军 绿 Φ15*30*2.5,平垫 GB97.1-85,olive green coating Φ15×30×2.5,disagree,0
+501000-0085,前左右减震,front fork,front left and right shock absorbers,disagree,0.14285714285714285
+903007-0004-02,六角法兰自锁螺母 GB6187-86,nut,hex flange self-locking nut GB6187-86,disagree,0.14285714285714285
+903007-0006,六角法兰自锁螺母 GB6187-86,nut,hex flange self-locking nut GB6187-86,disagree,0.14285714285714285
+404011-0010,前碟刹驻车手柄,front park lock kit,front parking brake handle,disagree,0.14285714285714285
+405012-0005,后碟刹驻车手柄,rear park lock kit,rear parking brake handle,disagree,0.14285714285714285
+903002-0008,平垫 GB97.1-85,flat gasket,flat washer GB97.1-85,disagree,0.16666666666666666
+903013-0020-02,内六角圆柱头螺丝 GB70-85,screw,hex socket cap screw GB70-85,disagree,0.16666666666666666
+903014-0001,内六角沉头螺丝 GB70.3,screw,hex socket countersunk screw GB70.3,disagree,0.16666666666666666
+903002-0008-02,平垫 GB97.1-85,washer,flat washer GB97.1-85,partial,0.2
+601004-0004,铸造下压块,lower raiser,cast lower riser block,partial,0.2
+903019-0013-02,外六角大头法兰螺栓 GB5789,bolt,hex large flange bolt GB5789,partial,0.2
+903018-0032,外六角小头法兰螺栓 GB5787,bolt,hex small flange bolt GB5787,partial,0.2
+313003-0011-02,熄火开关,stop switch(new),engine kill switch,partial,0.2
+903002-0004-02,平垫 GB97.1-85,washer,flat washer GB97.1-85,partial,0.2
+405007-0014,后大单碟刹下泵体总成,rear brake bottom pump assy.,rear large single disc brake caliper assembly,partial,0.2
+601003-0003,铸造上压块,upper raiser,cast upper riser block,partial,0.2
+903017-0011,外六角对边螺栓 GB5783,flange bolt,hex flat bolt GB5783,partial,0.2
+603001-0002,转向拉杆组件,steering linkages,steering tie rod assembly,partial,0.2
+603004-0003,转向柱夹块,steering raiser,steering column clamp block,partial,0.2
+903003-0003,波型垫片 GB/T955-1987,washer,wave washer GB/T955-1987,partial,0.2
+601004-0028,下压块,lower raiser,lower riser block,partial,0.25
+903001-0005,弹垫 GB93-87,washer,spring washer GB93-87,partial,0.25
+602006-0015,把 套,black bar grip,handlebar grip,partial,0.25
+313003-0011,熄火开关,stop switch,engine kill switch,partial,0.25
+602017-0003,护套芯,handlebar foam,handlebar padding insert,partial,0.25
+906003-0002,塑料扎带,plastic belt,plastic cable tie,partial,0.25
+903007-0007,六角法兰自锁螺母 GB6187-86,flange lock nut,hex flange self-locking nut GB6187-86,partial,0.25
+601003-0023,上压块,upper raiser,upper riser block,partial,0.25
+401011-0001,轮毂盖,hub cover,wheel hub cap,partial,0.25
+602015-0003,风门线,chock cable,choke cable,partial,0.3333333333333333
+602006-0026,把 套,bar grip,handlebar grip,partial,0.3333333333333333
+404006-0008L,AT110前碟刹下泵体总成 黑色,Front brake caliper left,AT110 front disc brake caliper assembly black,partial,0.375
+404006-0008R,AT110前碟刹下泵体总成 黑色,Front brake caliper right,AT110 front disc brake caliper assembly black,partial,0.375
+405000-0082,后碟刹总成,rear brake assy.,rear disc brake assembly,partial,0.4
+405006-0011,AY70-2后大单碟刹油管,rear brake oil pipe assy.,AY70-2 rear large single disc brake oil pipe,partial,0.4
+401003-0008,前轮毂组件,front hub seat,front wheel hub assembly,partial,0.4
+903018-0011,外六角小头法兰螺栓 GB5787,flange bolt,hex small flange bolt GB5787,partial,0.4
+903019-0012-02,外六角大头法兰螺栓 GB5789,flange bolt,hex large flange bolt GB5789,partial,0.4
+903018-0015,外六角小头法兰螺栓 GB5787,flange bolt,hex small flange bolt GB5787,partial,0.4
+404005-0010,AT110前碟刹1拖2油管总成,front brake oil pipe,AT110 front brake one-to-two oil pipe assembly,partial,0.4444444444444444
+313001-0008,组合开关,multi-functional switch,multi-function switch,agree,0.5
+903008-0009,开槽螺母 GB9457-1988,slotted nut,slotted nut GB9457-1988,agree,0.5
+903008-0011,开槽螺母 GB9457-1988,slotted nut,slotted nut GB9457-1988,agree,0.5
+401006-0034,轮胎,rear tire,tire,agree,0.5
+602011-0008-02,加速器,accelerator,throttle accelerator,agree,0.5
+908004-0003,橡胶堵头,plug,rubber plug,agree,0.5
+404003-0007,前碟刹上泵体总成 黑色,front brake master cylinder,front disc brake master cylinder assembly black,agree,0.5714285714285714
+405004-0011,后碟刹上泵体总成 黑色,rear brake master cylinder,rear disc brake master cylinder assembly black,agree,0.5714285714285714
+404008-0011,AT110前碟刹支架,front brake bracket,AT110 front disc brake bracket,agree,0.6
+568000-0001,转向柱锁片,steering column lock piece,steering column lock plate,agree,0.6
+404000-0128,前碟刹总成,front disc brake assy.,front disc brake assembly,agree,0.6
+401000-0055,前轮辋,front rim,front wheel rim,agree,0.6666666666666666
+904002-0002-02,开口销 GB91,cotter pin,cotter pin GB91,agree,0.6666666666666666
+566000-0001-02,转向柱,Steering column(orange),steering column,agree,0.6666666666666666
+566000-0001-01,转向柱,Steering column(black),steering column,agree,0.6666666666666666
+405008-0007,后碟刹蹄块,rear brake pad,rear disc brake pad,agree,0.75
+404007-0011,前碟刹蹄块,front brake pad,front disc brake pad,agree,0.75
+404001-0014,前碟刹圆盘,front brake disc,front disc brake rotor,agree,0.75
+404002-0015,左制动把,left brake lever,left brake lever,agree,1
+404011-0014,前刹车开关,front brake switch,front brake switch,agree,1
+405009-0011,后刹大精灵支架,rear brake bracket,rear brake bracket,agree,1
+405012-0009,后刹车开关,rear brake switch,rear brake switch,agree,1
+602014-0036,油门线,throttle cable,throttle cable,agree,1
+404002-0016,右制动把,right brake lever,right brake lever,agree,1
+405010-0002,后碟刹油管夹,Rear disc brake oil pipe clamp,rear disc brake oil pipe clamp,agree,1
