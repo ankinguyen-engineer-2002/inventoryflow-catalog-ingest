@@ -6,6 +6,44 @@ Notable changes to this submission. Format: [Keep a Changelog](https://keepachan
 
 ## [Unreleased]
 
+### Day 6 — Track B brought to Track A parity
+
+- **Python LLM provider port** under `track-b-data-engineering/dagster_project/ai/`.
+  Mirrors Track A's `ILLMProvider` interface and five concrete implementations
+  (`MockProvider`, `CachedLLMProvider`, `ClaudeCodeHandoffProvider`,
+  `OllamaProvider`, factory). Shares the same `shared/llm-cache.jsonl` so cache
+  hits earned by Track A are automatically available to Track B — no duplicate
+  LLM spend.
+- **CLI entry points** under `dagster_project/cli/`: `track-b-ingest`,
+  `track-b-enrich --mode audit`, `track-b-bench`. Surface matches
+  `track-a-jd-native/src/cli/`. The bench script runs the same fitment-lookup
+  query against DuckDB-on-Iceberg and emits a JSON result file that
+  COMPARISON.md cites alongside Track A's pg-native numbers.
+- **Production Dockerfile** (multi-stage: deps → build → runtime, non-root
+  user, healthcheck on `dagster_project.definitions` import). Defaults to
+  `dagster api grpc` so the container can be picked up by a Dagster webserver
+  / daemon outside.
+- **Extended `.github/workflows/ci.yml`** with a `track-b` job: Poetry install
+  → Ruff lint → Mypy → pytest → definitions-import smoke → production
+  Docker build with GHA cache scoped to `track-b`. The existing `track-a` job
+  is unchanged.
+- **`docs/TRACK_B.md`** (~760 lines) — single canonical Track B doc mirroring
+  TRACK_A.md's 16-section structure: Overview, Problem, Architecture, Iceberg
+  Schema, Data Pipelines, AI/LLM Integration, Configuration, Verification,
+  Scaling Roadmap, Operational Concerns, Trade-offs, Migration Path from
+  Track A, plus three appendices (Command Reference, Environment Variables,
+  Iceberg Query Cookbook).
+- **`sample-output/track-b/`** — Iceberg metadata.json + manifest-list.json,
+  Dagster asset-graph diagram + sample run log, dbt run-results.json +
+  manifest excerpt, DuckDB-on-Iceberg bench-results.json. Committed so
+  reviewers can inspect Iceberg snapshots and the Dagster DAG without
+  booting MinIO + the Iceberg REST catalog.
+- Track B is no longer "documented-only PoC"; it now matches Track A on
+  CI, containerisation, AI surface, and engineering documentation depth.
+  Track A remains the production-ready answer to the test; Track B
+  demonstrates a credible Polars/Iceberg/Dagster alternative at the same
+  engineering quality bar.
+
 ### Final — submission lead document
 
 - Added `SUBMISSION.md` at repo root as the primary entry point for

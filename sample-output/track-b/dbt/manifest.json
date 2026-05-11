@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.9.0",
+    "generated_at": "2025-05-11T19:42:34.001Z",
+    "adapter_type": "duckdb",
+    "project_name": "inventoryflow_catalog_track_b",
+    "project_id": "f3a2c1d5-7e9b-4f8a-9c1d-2a3b4c5d6e7f"
+  },
+  "nodes": {
+    "model.inventoryflow_catalog_track_b.silver_parts_atomic": {
+      "name": "silver_parts_atomic",
+      "resource_type": "model",
+      "package_name": "inventoryflow_catalog_track_b",
+      "path": "silver/silver_parts_atomic.sql",
+      "fqn": ["inventoryflow_catalog_track_b", "silver", "silver_parts_atomic"],
+      "config": {
+        "materialized": "incremental",
+        "incremental_strategy": "merge",
+        "unique_key": ["dealer_id", "part_number"],
+        "file_format": "iceberg",
+        "on_schema_change": "append_new_columns",
+        "tags": ["silver", "conformed"]
+      },
+      "refs": [{"name": "bronze_catalog_rows"}],
+      "sources": [],
+      "depends_on": {
+        "nodes": ["source.inventoryflow_catalog_track_b.bronze.bronze_catalog_rows"]
+      }
+    },
+    "model.inventoryflow_catalog_track_b.silver_fitment_atomic": {
+      "name": "silver_fitment_atomic",
+      "resource_type": "model",
+      "package_name": "inventoryflow_catalog_track_b",
+      "path": "silver/silver_fitment_atomic.sql",
+      "fqn": ["inventoryflow_catalog_track_b", "silver", "silver_fitment_atomic"],
+      "config": {
+        "materialized": "incremental",
+        "incremental_strategy": "merge",
+        "unique_key": ["dealer_id", "part_number", "model_code", "year"],
+        "file_format": "iceberg",
+        "tags": ["silver", "fitment"]
+      },
+      "refs": [{"name": "silver_parts_atomic"}],
+      "depends_on": {
+        "nodes": ["model.inventoryflow_catalog_track_b.silver_parts_atomic"]
+      }
+    },
+    "model.inventoryflow_catalog_track_b.gold_products_mart": {
+      "name": "gold_products_mart",
+      "resource_type": "model",
+      "package_name": "inventoryflow_catalog_track_b",
+      "path": "gold/gold_products_mart.sql",
+      "fqn": ["inventoryflow_catalog_track_b", "gold", "gold_products_mart"],
+      "config": {
+        "materialized": "table",
+        "file_format": "iceberg",
+        "partition_by": ["dealer_id", "day(ingested_at)"],
+        "sort_by": ["part_number"],
+        "tags": ["gold", "mart"]
+      },
+      "refs": [
+        {"name": "silver_parts_atomic"},
+        {"name": "silver_fitment_atomic"}
+      ],
+      "depends_on": {
+        "nodes": [
+          "model.inventoryflow_catalog_track_b.silver_parts_atomic",
+          "model.inventoryflow_catalog_track_b.silver_fitment_atomic"
+        ]
+      }
+    },
+    "model.inventoryflow_catalog_track_b.gold_marketplace_view": {
+      "name": "gold_marketplace_view",
+      "resource_type": "model",
+      "package_name": "inventoryflow_catalog_track_b",
+      "path": "gold/gold_marketplace_view.sql",
+      "fqn": ["inventoryflow_catalog_track_b", "gold", "gold_marketplace_view"],
+      "config": {
+        "materialized": "view",
+        "tags": ["gold", "marketplace"]
+      },
+      "refs": [{"name": "gold_products_mart"}],
+      "depends_on": {
+        "nodes": ["model.inventoryflow_catalog_track_b.gold_products_mart"]
+      }
+    }
+  },
+  "sources": {
+    "source.inventoryflow_catalog_track_b.bronze.bronze_catalog_rows": {
+      "name": "bronze_catalog_rows",
+      "resource_type": "source",
+      "source_name": "bronze",
+      "package_name": "inventoryflow_catalog_track_b",
+      "schema": "bronze",
+      "identifier": "bronze_catalog_rows",
+      "description": "Raw rows landed by Dagster's bronze asset. Materialised externally; this source acts as the dbt-side handle.",
+      "loader": "dagster",
+      "freshness": {
+        "warn_after": {"count": 24, "period": "hour"},
+        "error_after": {"count": 72, "period": "hour"}
+      }
+    }
+  }
+}

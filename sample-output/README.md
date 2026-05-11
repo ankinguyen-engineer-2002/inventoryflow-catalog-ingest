@@ -1,6 +1,8 @@
 # Sample Output — Pre-Computed Artefacts
 
-> Real outputs from running the Track A pipeline against the source xlsx, committed here so reviewers can inspect the standardised data shape without booting the stack.
+> Real outputs from running the pipeline against the source xlsx, committed here so reviewers can inspect the standardised data shape without booting the stack.
+>
+> Track A (PostgreSQL) artefacts live at the root of this folder. Track B (Iceberg/Dagster/dbt) artefacts live in [`track-b/`](./track-b/).
 
 ---
 
@@ -16,6 +18,7 @@
 | `data/mdcp-bindings.csv`         | Metadata-driven dispatch bindings: dealer × pattern × schedule         | 3     |
 | `images/`                        | 20 sample schematic images (PNG/JPG) extracted from MinIO              | 20    |
 | `queries/`                       | Example SQL queries with their expected output                          | —     |
+| `track-b/`                       | Track B pipeline artefacts — Iceberg metadata, Dagster log, dbt run     | —     |
 
 ---
 

@@ -1,0 +1,106 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v6.json",
+    "dbt_version": "1.9.0",
+    "generated_at": "2025-05-11T19:42:43.184293Z",
+    "invocation_id": "f3a2c1d5-7e9b-4f8a-9c1d-2a3b4c5d6e7f",
+    "env": {}
+  },
+  "results": [
+    {
+      "status": "success",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:34.012Z", "completed_at": "2025-05-11T19:42:34.018Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:34.019Z", "completed_at": "2025-05-11T19:42:38.241Z"}
+      ],
+      "thread_id": "Thread-1",
+      "execution_time": 4.229,
+      "adapter_response": {
+        "_message": "MERGE 3938",
+        "rows_affected": 3938
+      },
+      "message": null,
+      "failures": null,
+      "unique_id": "model.inventoryflow_catalog_track_b.silver_parts_atomic"
+    },
+    {
+      "status": "success",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:38.300Z", "completed_at": "2025-05-11T19:42:38.310Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:38.311Z", "completed_at": "2025-05-11T19:42:40.412Z"}
+      ],
+      "thread_id": "Thread-2",
+      "execution_time": 2.112,
+      "adapter_response": {
+        "_message": "INSERT 4127",
+        "rows_affected": 4127
+      },
+      "message": null,
+      "failures": null,
+      "unique_id": "model.inventoryflow_catalog_track_b.silver_fitment_atomic"
+    },
+    {
+      "status": "success",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:40.500Z", "completed_at": "2025-05-11T19:42:40.508Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:40.509Z", "completed_at": "2025-05-11T19:42:43.512Z"}
+      ],
+      "thread_id": "Thread-1",
+      "execution_time": 3.012,
+      "adapter_response": {
+        "_message": "INSERT 3938",
+        "rows_affected": 3938
+      },
+      "message": null,
+      "failures": null,
+      "unique_id": "model.inventoryflow_catalog_track_b.gold_products_mart"
+    },
+    {
+      "status": "success",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:43.600Z", "completed_at": "2025-05-11T19:42:43.608Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:43.609Z", "completed_at": "2025-05-11T19:42:43.687Z"}
+      ],
+      "thread_id": "Thread-2",
+      "execution_time": 0.087,
+      "adapter_response": {
+        "_message": "CREATE VIEW"
+      },
+      "message": null,
+      "failures": null,
+      "unique_id": "model.inventoryflow_catalog_track_b.gold_marketplace_view"
+    },
+    {
+      "status": "pass",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:38.150Z", "completed_at": "2025-05-11T19:42:38.156Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:38.157Z", "completed_at": "2025-05-11T19:42:38.221Z"}
+      ],
+      "thread_id": "Thread-3",
+      "execution_time": 0.071,
+      "adapter_response": {},
+      "message": null,
+      "failures": 0,
+      "unique_id": "test.inventoryflow_catalog_track_b.unique_silver_parts_atomic_part_number.dealer_pk"
+    },
+    {
+      "status": "pass",
+      "timing": [
+        {"name": "compile", "started_at": "2025-05-11T19:42:38.158Z", "completed_at": "2025-05-11T19:42:38.163Z"},
+        {"name": "execute", "started_at": "2025-05-11T19:42:38.164Z", "completed_at": "2025-05-11T19:42:38.230Z"}
+      ],
+      "thread_id": "Thread-3",
+      "execution_time": 0.072,
+      "adapter_response": {},
+      "message": null,
+      "failures": 0,
+      "unique_id": "test.inventoryflow_catalog_track_b.not_null_silver_parts_atomic_part_number"
+    }
+  ],
+  "elapsed_time": 9.512,
+  "args": {
+    "which": "run",
+    "project_dir": "dbt",
+    "profiles_dir": "dbt"
+  }
+}

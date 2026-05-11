@@ -94,3 +94,58 @@ jobs:
           tags: inventoryflow-catalog-ingest:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  track-b:
+    name: Track B — Python
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: track-b-data-engineering
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: |
+          pip install --no-cache-dir "poetry==1.8.3"
+          poetry --version
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: track-b-data-engineering/.venv
+          key: poetry-${{ runner.os }}-${{ hashFiles('track-b-data-engineering/poetry.lock', 'track-b-data-engineering/pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-root
+
+      - name: Ruff lint
+        run: poetry run ruff check dagster_project tests
+
+      - name: Mypy strict type-check
+        run: poetry run mypy dagster_project
+        continue-on-error: true  # PoC scope; strict mode is aspirational
+
+      - name: Pytest unit suite
+        run: poetry run pytest -q
+
+      - name: Verify Dagster Definitions import
+        run: poetry run python -c "from dagster_project.definitions import defs; print('defs OK')"
+
+      - name: Production Docker build
+        uses: docker/build-push-action@v6
+        with:
+          context: track-b-data-engineering
+          file: track-b-data-engineering/Dockerfile
+          push: false
+          tags: inventoryflow-catalog-track-b:ci
+          cache-from: type=gha,scope=track-b
+          cache-to: type=gha,mode=max,scope=track-b

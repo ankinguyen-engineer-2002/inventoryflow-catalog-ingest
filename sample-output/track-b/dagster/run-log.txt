@@ -1,0 +1,25 @@
+2025-05-11 19:42:03 +0000 - dagster - INFO - System - Starting run with run_id=8f4a2b1e
+2025-05-11 19:42:03 +0000 - dagster - INFO - System - Loading source xlsx via SourceXlsxResource
+2025-05-11 19:42:03 +0000 - dagster - INFO - source_xlsx - Resolved path: ../shared/sample-data/example.xlsx (241.3 MB)
+2025-05-11 19:42:04 +0000 - dagster - INFO - bronze_catalog_rows - STARTED
+2025-05-11 19:42:04 +0000 - dagster - INFO - bronze_catalog_rows - Reading 110 sheets via openpyxl in read-only mode
+2025-05-11 19:42:32 +0000 - dagster - INFO - bronze_catalog_rows - Detected 122 sections across 110 sheets (3 header signatures: chassis, engine, chassis_u8)
+2025-05-11 19:42:34 +0000 - dagster - INFO - bronze_catalog_rows - Wrote 6,178 raw rows to Iceberg bronze partition (dealer=00000000-0000-0000-0000-000000000001, file_hash=a1c3...e9b)
+2025-05-11 19:42:34 +0000 - dagster - INFO - bronze_catalog_rows - MATERIALIZED in 30.4s
+2025-05-11 19:42:34 +0000 - dagster - INFO - silver_parts_atomic - STARTED
+2025-05-11 19:42:34 +0000 - dagster - INFO - silver_parts_atomic - Running dbt model: silver.silver_parts_atomic (materialization=incremental, on_schema_change=append_new_columns)
+2025-05-11 19:42:38 +0000 - dagster - INFO - silver_parts_atomic - MERGE INTO complete: 3938 rows upserted, 0 rows deleted
+2025-05-11 19:42:38 +0000 - dagster - INFO - silver_parts_atomic - dbt tests: 8 passed, 0 warned, 0 errored
+2025-05-11 19:42:38 +0000 - dagster - INFO - silver_parts_atomic - MATERIALIZED in 4.2s
+2025-05-11 19:42:38 +0000 - dagster - INFO - silver_fitment_atomic - STARTED
+2025-05-11 19:42:39 +0000 - dagster - INFO - silver_fitment_atomic - Exploded fitment: 3938 parts → 4127 fitment rows (mean 1.05 model affiliations/part)
+2025-05-11 19:42:40 +0000 - dagster - INFO - silver_fitment_atomic - MATERIALIZED in 2.1s
+2025-05-11 19:42:40 +0000 - dagster - INFO - gold_products_mart - STARTED
+2025-05-11 19:42:40 +0000 - dagster - INFO - gold_products_mart - Building Polars frame: aggregating fitment back into JSON arrays
+2025-05-11 19:42:43 +0000 - dagster - INFO - gold_products_mart - Wrote 3938 rows, 2 Parquet files (zstd, sort_order=part_number)
+2025-05-11 19:42:43 +0000 - dagster - INFO - gold_products_mart - MATERIALIZED in 3.0s
+2025-05-11 19:42:43 +0000 - dagster - INFO - gold_marketplace_view - STARTED
+2025-05-11 19:42:43 +0000 - dagster - INFO - gold_marketplace_view - View-only materialization (no data movement)
+2025-05-11 19:42:43 +0000 - dagster - INFO - gold_marketplace_view - MATERIALIZED in 0.1s
+2025-05-11 19:42:43 +0000 - dagster - INFO - System - Run complete: status=SUCCESS, duration=40.1s
+2025-05-11 19:42:43 +0000 - dagster - INFO - System - Emitted 4 OpenLineage events to http://localhost:5000/api/v1/lineage
