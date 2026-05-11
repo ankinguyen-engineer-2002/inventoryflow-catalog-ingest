@@ -1,0 +1,152 @@
+# Track B local development stack.
+#
+# Brings up the lakehouse + streaming infrastructure: MinIO (object storage),
+# Iceberg REST catalog, PostgreSQL (serving layer + Iceberg metadata),
+# Redpanda (Kafka-compatible event bus), RisingWave (streaming SQL).
+#
+# Boot:    docker-compose up -d
+# Inspect: docker-compose ps
+# Reset:   docker-compose down -v
+
+services:
+  # ──────────────────────────────────────────────────────────────────────
+  # Object storage — MinIO acts as the S3-compatible Iceberg warehouse.
+  # ──────────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: ifc_tb_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9100:9000"     # S3 API
+      - "9101:9001"     # Web console (different from Track A to avoid clash)
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: ifc_tb_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/catalog-warehouse  || true;
+      mc mb -p local/catalog-raw        || true;
+      mc anonymous set download local/catalog-warehouse;
+      echo 'minio buckets ready';
+      "
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Iceberg REST Catalog (Tabular's open implementation)
+  # ──────────────────────────────────────────────────────────────────────
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: ifc_tb_iceberg_rest
+    restart: unless-stopped
+    ports:
+      - "8181:8181"
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_REGION: us-east-1
+      CATALOG_WAREHOUSE: s3://catalog-warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+    depends_on:
+      - minio-init
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8181/v1/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────
+  # PostgreSQL — shared serving layer (catalog API in production reads here)
+  # ──────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ifc_tb_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: catalog
+    ports:
+      - "5433:5432"     # different port from Track A
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d catalog"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Redpanda — Kafka-compatible event bus. Single broker for PoC.
+  # ──────────────────────────────────────────────────────────────────────
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: ifc_tb_redpanda
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr=internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+      - --smp=1
+      - --memory=1G
+      - --mode=dev-container
+      - --default-log-level=warn
+    ports:
+      - "19092:19092"   # Kafka API
+      - "18081:18081"   # Schema Registry
+      - "18082:18082"   # Pandaproxy
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  # ──────────────────────────────────────────────────────────────────────
+  # RisingWave — streaming SQL on Redpanda; sinks into Iceberg or PG.
+  # ──────────────────────────────────────────────────────────────────────
+  risingwave:
+    image: risingwavelabs/risingwave:v2.1.0
+    container_name: ifc_tb_risingwave
+    restart: unless-stopped
+    command: ["single_node"]
+    ports:
+      - "4566:4566"     # Postgres-wire protocol (psql -h localhost -p 4566 -d dev -U root)
+      - "5691:5691"     # Web dashboard
+    depends_on:
+      - redpanda
+      - minio
+    environment:
+      RW_TELEMETRY_TYPE: "disabled"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5691 > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  minio-data:
+  postgres-data:
+  redpanda-data:

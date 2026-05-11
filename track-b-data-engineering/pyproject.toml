@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "inventoryflow-catalog-track-b"
+version = "0.1.0"
+description = "Track B — modern OSS data-engineering implementation. Polars + Apache Iceberg + Dagster + dbt + Redpanda + RisingWave."
+authors = ["Aric Nguyen <aricnguyen.analytics2002@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+# Compute
+polars = "^1.18"
+duckdb = "^1.1"
+
+# Lakehouse
+pyiceberg = {extras = ["s3fs", "duckdb"], version = "^0.8"}
+pyarrow = "^18.0"
+
+# Orchestration
+dagster = "^1.9"
+dagster-webserver = "^1.9"
+dagster-duckdb = "^0.25"
+
+# Transformations
+dbt-core = "^1.9"
+dbt-duckdb = "^1.9"
+
+# Streaming
+confluent-kafka = "^2.6"
+
+# Excel parsing (reuse same input as Track A)
+openpyxl = "^3.1"
+
+# Utilities
+pydantic = "^2.10"
+python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.25"
+ruff = "^0.8"
+mypy = "^1.13"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
