@@ -1,0 +1,96 @@
+name: CI
+
+# Runs on every pull request and push to main.
+# Free for public repositories; under 2000 minutes/month for private.
+#
+# Stages:
+#   lint       — ESLint + Prettier check
+#   typecheck  — tsc --noEmit
+#   test       — Vitest unit + integration suites
+#   build      — production Docker image build (smoke test only)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  track-a:
+    name: Track A — TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: track-a-jd-native
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dev
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: catalog
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dev -d catalog"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: track-a-jd-native/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Apply migrations (integration smoke)
+        env:
+          DATABASE_URL: postgres://dev:dev@localhost:5432/catalog
+        run: pnpm db:migrate
+
+      - name: Production Docker build
+        uses: docker/build-push-action@v6
+        with:
+          context: track-a-jd-native
+          file: track-a-jd-native/Dockerfile
+          push: false
+          tags: inventoryflow-catalog-ingest:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

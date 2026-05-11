@@ -4,7 +4,22 @@
 
 This document quantifies the trade-offs across **18 dimensions** so the reviewer can audit the recommendation (**Track A v2 for current stage, Track B v2 for scale + modern hybrid**).
 
-Numbers marked `[measured]` are from actual probe runs; `[estimated]` are projections from documented benchmarks of comparable workloads.
+Numbers marked `[measured]` are from actual benchmark runs (see `docs/bench/bench-results.json`); `[estimated]` are projections from documented benchmarks of comparable workloads.
+
+**Measured on Apple M2, Node 25, PostgreSQL 16 in Docker (2026-05-11):**
+
+| Metric                                 | Result        |
+| -------------------------------------- | ------------- |
+| Fitment lookup query p50                | 0.60 ms       |
+| Fitment lookup query p95                | 0.87 ms       |
+| Fitment lookup query p99                | 1.02 ms       |
+| Fitment lookup query max (500 samples) | 1.32 ms       |
+| `GIN (fitment jsonb_path_ops)` size     | 2,128 kB      |
+| Products row count                      | 3,938         |
+| Product-image associations              | 10,524        |
+| End-to-end full pipeline wall-time      | ~60 seconds   |
+
+The fitment query consistently completes in under 1.5 milliseconds at p99, two orders of magnitude faster than the initial 50 ms estimate. The `jsonb_path_ops` index variant pays for itself in containment-query selectivity.
 
 ---
 

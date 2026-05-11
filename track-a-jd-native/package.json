@@ -32,6 +32,8 @@
     "populate:models": "tsx src/cli/populate-vehicle-models.ts",
     "ingest:references": "tsx src/cli/ingest-reference-sheets.ts",
     "seed:mdcp": "tsx src/cli/seed-mdcp.ts",
+    "dispatch": "tsx src/cli/dispatch-loop.ts",
+    "bench": "tsx test/benchmark/run-bench.ts",
     "worker": "tsx src/queue/workers/main.ts",
     "api": "tsx src/api/server.ts",
     "dev": "tsx watch src/api/server.ts"
