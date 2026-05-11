@@ -6,6 +6,39 @@ Notable changes to this submission. Format: [Keep a Changelog](https://keepachan
 
 ## [Unreleased]
 
+### Day 4 — 2026-05-11 (Track A complete)
+
+**M4 — LLM enrichment wired into the data pipeline.**
+
+- New CLI: `pnpm enrich --mode audit --limit N` — cross-validates the
+  current `products.name_en` against a fresh LLM translation of
+  `products.name_cn`, records `translation_consensus` (agree / partial /
+  disagree) into `data_quality` JSONB. This is Layer 3 of the five-layer
+  accuracy framework documented in ADR-007.
+- 68 products audited on the sample file; 16% disagreement rate caught
+  real OEM data defects ("busher" typo, "flat gasket" vs "flat washer",
+  "front fork" vs "front shock absorber"). The dealer-supplied EN is
+  preserved as the source of truth; the LLM alternative lives in
+  `data_quality.translation_llm_alt` for a downstream review step.
+- Three new providers implemented end-to-end (replacing Day 3 stubs):
+  `OllamaProvider` (local qwen2.5:7b, $0), `AnthropicBatchProvider`
+  (cloud, paid; documented but not invoked), `claude-code-handoff`
+  refined (the one I use to seed the cache via my Claude Max session).
+- `gemini-free-tier` intentionally stays stubbed: Gemini's TOS allows
+  Google to train on API content, which is a privacy risk for dealer
+  catalog data in production.
+- `shared/llm-cache.jsonl` seeded with 51 verified translation entries
+  and committed. Reviewer runs `pnpm enrich` against the cache and pays
+  $0 in API spend.
+- Cache decorator hardened: never caches null results (avoids freezing
+  the pipeline on pending handoff tasks); sorted-key JSON serialisation
+  for stable cache keys; new unit tests for cache hit / cache miss /
+  distinct-inputs.
+- New docs/TRACK_A.md (engineering write-up, senior voice) and
+  docs/RECRUITER_GUIDE.md (concrete review commands, no guessing).
+- README updated: M0-M4 all complete; Track B explicitly scoped as
+  documented-not-implemented.
+
 ### Plan v2 — 2026-05-11 (Day 0 evening)
 
 **Major scope expansion** in response to senior-DE review:

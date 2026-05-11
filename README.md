@@ -33,7 +33,7 @@
 
 <br/>
 
-[**📖 Read the Plan**](./PLAN.md)  ·  [**⚖️ Compare Tracks**](./docs/COMPARISON.md)  ·  [**🏛 ADRs**](./docs/decisions/)  ·  [**❓ Open Questions**](./docs/QUESTIONS_FOR_RECRUITER.md)  ·  [**📓 Runbook**](./docs/runbook.md)
+[**🛠 Recruiter Guide**](./docs/RECRUITER_GUIDE.md)  ·  [**📐 Track A Write-up**](./docs/TRACK_A.md)  ·  [**📖 Read the Plan**](./PLAN.md)  ·  [**⚖️ Compare Tracks**](./docs/COMPARISON.md)  ·  [**🏛 ADRs**](./docs/decisions/)  ·  [**❓ Open Questions**](./docs/QUESTIONS_FOR_RECRUITER.md)
 
 </div>
 
@@ -473,11 +473,14 @@ inventoryflow-catalog-ingest/
 ## 📅 Status & roadmap
 
 ```
-✅ M0 — Plan + repo scaffold + 9 ADRs           (2026-05-11)
-⏳ M1 — Single sheet parsed (AY70-2)            Day 1 PM
-⏳ M2 — Full file → DB                          Day 2
-⏳ M3 — Both tracks runnable + LLM cache        Day 3
-⏳ M4 — Final polish + submission               Day 4
+✅ M0 — Plan + repo scaffold + 14 ADRs
+✅ M1 — Single sheet parsed (AY70-2) end-to-end
+✅ M2 — Full file → DB (3,938 products, 382 R2 images, idempotent)
+✅ M3 — Both tracks documented + Fastify API + streaming + LLM cache
+✅ M4 — LLM enrichment wired (audit mode, 68 products verified)
+
+  Track B Polars/Iceberg/Dagster PoC — documented, not implemented
+  (see PLAN.md §5, COMPARISON.md, ADR-008)
 ```
 
 Full timeline: [`PLAN.md §11`](./PLAN.md#11-delivery-timeline--milestones)
