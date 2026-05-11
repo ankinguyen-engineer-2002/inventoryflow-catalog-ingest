@@ -15,18 +15,13 @@ declarative, but the runtime is heavier (Dagster webserver, daemon, etc.).
 The trade-off is appropriate at the scale Track B targets (500+ dealers).
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 import polars as pl
-from dagster import AssetExecutionContext, AssetIn, asset
+from dagster import AssetIn, asset
+from pyiceberg.catalog import Catalog
 
 from .resources import IcebergCatalogResource, SourceXlsxResource
-
-if TYPE_CHECKING:
-    from pyiceberg.catalog import Catalog
 
 
 NAMESPACE = "inventoryflow"
@@ -43,7 +38,7 @@ NAMESPACE = "inventoryflow"
     compute_kind="polars",
 )
 def bronze_catalog_rows(
-    context: AssetExecutionContext,
+    context,
     iceberg_catalog: IcebergCatalogResource,
     source_xlsx: SourceXlsxResource,
 ) -> dict[str, int]:
@@ -121,7 +116,7 @@ def bronze_catalog_rows(
     ins={"bronze_rows": AssetIn(key="bronze_catalog_rows")},
 )
 def silver_parts(
-    context: AssetExecutionContext,
+    context,
     bronze_rows: dict[str, int],
     iceberg_catalog: IcebergCatalogResource,
 ) -> int:
@@ -191,7 +186,7 @@ def silver_parts(
     ins={"silver_count": AssetIn(key="silver_parts")},
 )
 def gold_products_mart(
-    context: AssetExecutionContext,
+    context,
     silver_count: int,
     iceberg_catalog: IcebergCatalogResource,
 ) -> int:

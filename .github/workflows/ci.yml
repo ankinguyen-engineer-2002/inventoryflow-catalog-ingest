@@ -85,6 +85,9 @@ jobs:
           DATABASE_URL: postgres://dev:dev@localhost:5432/catalog
         run: pnpm db:migrate
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Production Docker build
         uses: docker/build-push-action@v6
         with:
@@ -139,6 +142,9 @@ jobs:
 
       - name: Verify Dagster Definitions import
         run: poetry run python -c "from dagster_project.definitions import defs; print('defs OK')"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Production Docker build
         uses: docker/build-push-action@v6
