@@ -1,0 +1,37 @@
+{
+  "manifest-list-path": "s3://catalog-warehouse/inventoryflow.db/silver_parts_atomic/metadata/snap-8847123456789012345.avro",
+  "snapshot-id": 8847123456789012345,
+  "sequence-number": 4,
+  "manifests": [
+    {
+      "manifest-path": "s3://catalog-warehouse/inventoryflow.db/silver_parts_atomic/metadata/00000-c1a4f8d2.avro",
+      "manifest-length": 7384,
+      "partition-spec-id": 0,
+      "content": 0,
+      "sequence-number": 4,
+      "min-sequence-number": 4,
+      "added-snapshot-id": 8847123456789012345,
+      "added-data-files-count": 2,
+      "existing-data-files-count": 0,
+      "deleted-data-files-count": 0,
+      "added-rows-count": 3938,
+      "existing-rows-count": 0,
+      "deleted-rows-count": 0,
+      "partitions": [
+        {
+          "contains-null": false,
+          "contains-nan": false,
+          "lower-bound": "00000000-0000-0000-0000-000000000001",
+          "upper-bound": "00000000-0000-0000-0000-000000000001"
+        },
+        {
+          "contains-null": false,
+          "contains-nan": false,
+          "lower-bound": "2025-05-11",
+          "upper-bound": "2025-05-11"
+        }
+      ]
+    }
+  ],
+  "note": "Manifests reference Parquet data files partitioned by (dealer_id, day(ingested_at)). The single-partition output reflects the demo dealer + same-day run."
+}

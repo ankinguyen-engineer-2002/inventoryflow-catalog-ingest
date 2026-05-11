@@ -1,0 +1,13 @@
+{
+  "engine": "duckdb-on-iceberg",
+  "hardware": "darwin",
+  "python_version": "3.12.6",
+  "fitment_query": {
+    "iterations": 500,
+    "p50_ms": 1.84,
+    "p95_ms": 2.71,
+    "p99_ms": 3.42,
+    "max_ms": 5.18
+  },
+  "notes": "Run after `make track-b-batch` populates Iceberg gold. Higher than Track A's Postgres p50 (0.60 ms) — expected, since Iceberg adds metadata-resolution overhead on each scan. Acceptable for analytical workloads; for the hot fitment-lookup path the catalog API would still read Postgres, with Iceberg serving the analytics/marketplace consumers."
+}

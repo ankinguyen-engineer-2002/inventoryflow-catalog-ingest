@@ -1,0 +1,96 @@
+{
+  "format-version": 2,
+  "table-uuid": "9a4e1b2c-7f3d-4e5a-8b6c-1f2e3d4c5b6a",
+  "location": "s3://catalog-warehouse/inventoryflow.db/silver_parts_atomic",
+  "last-sequence-number": 4,
+  "last-updated-ms": 1715472180432,
+  "last-column-id": 14,
+  "current-schema-id": 0,
+  "schemas": [
+    {
+      "schema-id": 0,
+      "type": "struct",
+      "fields": [
+        {"id": 1, "name": "part_number", "type": "string", "required": true},
+        {"id": 2, "name": "name_en", "type": "string", "required": true},
+        {"id": 3, "name": "name_cn", "type": "string", "required": false},
+        {"id": 4, "name": "retail_price_usd", "type": "decimal(10,2)", "required": false},
+        {"id": 5, "name": "currency", "type": "string", "required": false},
+        {"id": 6, "name": "category", "type": "string", "required": true},
+        {"id": 7, "name": "section_name_cn", "type": "string", "required": false},
+        {"id": 8, "name": "section_name_en", "type": "string", "required": false},
+        {"id": 9, "name": "callout_no", "type": "int", "required": false},
+        {"id": 10, "name": "primary_image_sha256", "type": "string", "required": false},
+        {"id": 11, "name": "translation_provider", "type": "string", "required": false},
+        {"id": 12, "name": "translation_confidence", "type": "string", "required": false},
+        {"id": 13, "name": "dealer_id", "type": "string", "required": true},
+        {"id": 14, "name": "ingested_at", "type": "timestamptz", "required": true}
+      ]
+    }
+  ],
+  "default-spec-id": 0,
+  "partition-specs": [
+    {
+      "spec-id": 0,
+      "fields": [
+        {"name": "dealer_id", "transform": "identity", "source-id": 13, "field-id": 1000},
+        {"name": "ingested_day", "transform": "day", "source-id": 14, "field-id": 1001}
+      ]
+    }
+  ],
+  "default-sort-order-id": 1,
+  "sort-orders": [
+    {
+      "order-id": 1,
+      "fields": [
+        {"transform": "identity", "source-id": 1, "direction": "asc", "null-order": "nulls-last"}
+      ]
+    }
+  ],
+  "current-snapshot-id": 8847123456789012345,
+  "snapshots": [
+    {
+      "snapshot-id": 6612089054217390123,
+      "timestamp-ms": 1715386521987,
+      "summary": {
+        "operation": "append",
+        "added-data-files": "4",
+        "added-records": "3938",
+        "added-files-size": "287456",
+        "total-records": "3938",
+        "total-files-size": "287456"
+      },
+      "manifest-list": "s3://catalog-warehouse/inventoryflow.db/silver_parts_atomic/metadata/snap-6612089054217390123.avro",
+      "schema-id": 0
+    },
+    {
+      "snapshot-id": 8847123456789012345,
+      "parent-snapshot-id": 6612089054217390123,
+      "timestamp-ms": 1715472180432,
+      "summary": {
+        "operation": "overwrite",
+        "added-data-files": "2",
+        "deleted-data-files": "2",
+        "added-records": "3938",
+        "deleted-records": "3938",
+        "total-records": "3938",
+        "total-files-size": "289103"
+      },
+      "manifest-list": "s3://catalog-warehouse/inventoryflow.db/silver_parts_atomic/metadata/snap-8847123456789012345.avro",
+      "schema-id": 0
+    }
+  ],
+  "properties": {
+    "write.format.default": "parquet",
+    "write.parquet.compression-codec": "zstd",
+    "write.target-file-size-bytes": "134217728",
+    "format-version": "2",
+    "owner": "inventoryflow-track-b",
+    "comment": "Conformed parts catalog — silver layer. Idempotent via MERGE on (dealer_id, part_number)."
+  },
+  "snapshot-log": [
+    {"snapshot-id": 6612089054217390123, "timestamp-ms": 1715386521987},
+    {"snapshot-id": 8847123456789012345, "timestamp-ms": 1715472180432}
+  ],
+  "metadata-log": []
+}

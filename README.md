@@ -20,7 +20,7 @@
 **Four solutions presented:**
 
 [![Solution A](https://img.shields.io/badge/🟢_Solution_A-IMPLEMENTED-2ea44f?style=for-the-badge)](./docs/TRACK_A.md)
-[![Solution B](https://img.shields.io/badge/🟡_Solution_B-PoC_SCAFFOLD-eab308?style=for-the-badge)](./track-b-data-engineering/)
+[![Solution B](https://img.shields.io/badge/🟡_Solution_B-RUNNABLE_POC-eab308?style=for-the-badge)](./docs/TRACK_B.md)
 [![Solution C](https://img.shields.io/badge/🔵_Solution_C-MS_FABRIC_v10-0078d4?style=for-the-badge)](./docs/solutions/solution-c-microsoft-fabric.md)
 [![Solution D](https://img.shields.io/badge/🟣_Solution_D-AWS_BIG_DATA-ff9900?style=for-the-badge)](./docs/solutions/solution-d-aws-bigdata.md)
 
@@ -141,7 +141,7 @@ S3 + Iceberg · Glue Catalog · Kinesis · MSK · Lambda · Step Functions · At
 </td>
 <td>
 
-[**Read Track B →**](./track-b-data-engineering/)
+[**Read TRACK_B.md →**](./docs/TRACK_B.md)
 
 </td>
 <td>

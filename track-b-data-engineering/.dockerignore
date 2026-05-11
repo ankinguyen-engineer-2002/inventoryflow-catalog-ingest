@@ -1,0 +1,17 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+target
+dbt_packages
+logs
+.dagster
+.env
+.env.local
+*.log
+.vscode
+.idea
+.DS_Store
