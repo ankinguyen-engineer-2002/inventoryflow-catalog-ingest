@@ -80,60 +80,61 @@ The shape is intentionally identical so the catalog API in Solution A can switch
 
 Track A organises code around an imperative pipeline (one ingest job calls one parser calls one upserter). Track B organises code around **assets** — declarative descriptions of "what data should exist" — with Dagster computing the dependency graph and re-materialising only what's stale.
 
-```
-                       ┌─────────────────────────────────────────────────────┐
-                       │  ⓪ INGRESS                                          │
-                       │                                                     │
-                       │  CLI:   track-b-ingest <xlsx>                       │
-                       │         track-b-enrich --mode audit                 │
-                       │         track-b-bench                                │
-                       │  Dagster: webserver UI on :3000 for graph + runs    │
-                       │  Sensors: on-new-xlsx (file landing in raw bucket)   │
-                       └──────────────────────────────┬───────────────────────┘
-                                                      │
-                       ┌──────────────────────────────▼───────────────────────┐
-                       │  ① ORCHESTRATION                                     │
-                       │                                                      │
-                       │  Dagster software-defined assets:                    │
-                       │    bronze_catalog_rows  → silver_parts  → gold_*     │
-                       │  Dagster asset checks gate materialisation           │
-                       │  Auto-materialisation policies (freshness-driven)    │
-                       │  Run history + lineage stored in Dagster's PG        │
-                       └─────┬────────────────────┬──────────────────┬────────┘
-                             │                    │                  │
-                ┌────────────▼─────┐   ┌──────────▼──────────┐  ┌────▼────────┐
-                │ ② COMPUTE         │   │ ③ INTELLIGENCE       │  │ ④ STORAGE    │
-                │                   │   │    (AI)              │  │              │
-                │ Polars             │   │  ILLMProvider:        │  │ Apache       │
-                │  (read xlsx,       │   │   ├ mock              │  │ Iceberg      │
-                │   transform,       │   │   ├ cached            │  │ on MinIO     │
-                │   write Iceberg)   │   │   ├ claude-code-      │  │ (or R2 / S3) │
-                │                   │   │   │  handoff           │  │              │
-                │ DuckDB             │   │   ├ ollama             │  │ Glue Catalog │
-                │  (analytical       │   │   └ anthropic-batch    │  │ or Iceberg   │
-                │   queries on       │   │                       │  │ REST catalog │
-                │   Iceberg)         │   │  Shared cache file    │  │              │
-                │                   │   │  (../shared/          │  │ PG (Dagster  │
-                │ dbt-core           │   │   llm-cache.jsonl)    │  │  run store)  │
-                │  (silver + gold    │   │                       │  │              │
-                │   SQL transforms)  │   │  Audit emitted via    │  │ Redpanda     │
-                │                   │   │  Dagster metadata     │  │  (streaming) │
-                │ PySpark            │   │  + OpenLineage events │  │              │
-                │  (future, >5 GB)   │   │                       │  │ RisingWave   │
-                └─────────┬─────────┘   └──────────┬────────────┘  │  (stream SQL)│
-                          │                        │               └────┬─────────┘
-                          │                        │                    │
-                          └────────────────────────┴────────────────────┘
-                                                   │
-                       ┌───────────────────────────▼─────────────────────────┐
-                       │  ⑤ OBSERVABILITY                                    │
-                       │                                                     │
-                       │  Dagster asset graph (built-in lineage UI)          │
-                       │  OpenLineage events (column-level lineage)          │
-                       │  Asset materialisation metadata (rows, bytes, time) │
-                       │  Asset checks (data quality gates)                  │
-                       │  Run logs (per-asset, per-execution)                │
-                       └─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph INGRESS["⓪ Ingress"]
+        CLI[CLI<br/>track-b-ingest · enrich · bench]
+        SENSOR[Dagster sensors<br/>on-new-xlsx · on-binding-change]
+        UI[Dagster webserver UI<br/>:3000 — graph + runs + lineage]
+    end
+
+    subgraph ORCH["① Orchestration"]
+        ASSETS[Software-defined assets<br/>bronze → silver → gold]
+        CHECKS[Asset checks<br/>data-quality gates]
+        AUTO[AutoMaterializePolicy<br/>freshness-driven re-materialise]
+    end
+
+    subgraph COMPUTE["② Compute"]
+        POLARS[Polars<br/>xlsx read + transform]
+        DUCKDB[DuckDB<br/>analytical queries on Iceberg]
+        DBT[dbt-core<br/>silver + gold SQL transforms]
+        SPARK[PySpark<br/>distributed mode &gt; 5 GB]
+    end
+
+    subgraph AI["③ Intelligence — AI"]
+        PROV[ILLMProvider<br/>mock · cached · handoff · ollama · anthropic-batch]
+        CACHE[(shared/llm-cache.jsonl<br/>shared with Track A)]
+    end
+
+    subgraph STORAGE["④ Storage"]
+        ICEBERG[(Apache Iceberg<br/>on MinIO / R2 / S3)]
+        REST[Iceberg REST catalog<br/>or Glue / Polaris]
+        PG[(Postgres<br/>Dagster run store)]
+        RP[(Redpanda topics)]
+        RW[(RisingWave<br/>streaming SQL views)]
+    end
+
+    subgraph OBS["⑤ Observability"]
+        LIN[Dagster asset graph<br/>built-in lineage UI]
+        OL[OpenLineage events<br/>column-level lineage]
+        META[Materialisation metadata<br/>rows · bytes · ms]
+    end
+
+    INGRESS --> ORCH
+    ORCH --> COMPUTE
+    ORCH --> AI
+    COMPUTE --> STORAGE
+    AI --> STORAGE
+    AI -.cache lookup.-> CACHE
+    STORAGE --> OBS
+    COMPUTE --> OBS
+
+    style INGRESS fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    style ORCH fill:#fef3c7,stroke:#d97706,color:#78350f
+    style COMPUTE fill:#dcfce7,stroke:#16a34a,color:#14532d
+    style AI fill:#fae8ff,stroke:#a21caf,color:#581c87
+    style STORAGE fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    style OBS fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
 ```
 
 ### 3.2 Why these components
@@ -155,6 +156,33 @@ Track A organises code around an imperative pipeline (one ingest job calls one p
 ## 4. Iceberg Schema
 
 The medallion architecture organises Iceberg tables into three layers. Each layer is a separate Iceberg namespace partition for clarity of ownership.
+
+```mermaid
+flowchart LR
+    subgraph BRONZE["🥉 Bronze · landing"]
+        BR[bronze_catalog_rows<br/>_raw_json + provenance]
+    end
+    subgraph SILVER["🥈 Silver · typed"]
+        SP[silver_parts_atomic<br/>UNIQUE dealer×part]
+        SF[silver_fitment_atomic<br/>vehicle affiliations]
+        SI[silver_images_meta<br/>SHA-256 → R2 key]
+    end
+    subgraph GOLD["🥇 Gold · marts"]
+        GP[(gold_products_mart<br/>denorm fitment JSON)]
+        GV[gold_marketplace_view<br/>marketplace shape]
+    end
+    BR --> SP
+    BR --> SF
+    BR --> SI
+    SP --> GP
+    SF --> GP
+    SI --> GP
+    GP --> GV
+
+    style BRONZE fill:#fed7aa,stroke:#ea580c
+    style SILVER fill:#e5e7eb,stroke:#6b7280
+    style GOLD fill:#fef3c7,stroke:#d97706
+```
 
 ### 4.1 Bronze — raw landing
 
@@ -274,35 +302,25 @@ This eliminates whole classes of recovery procedure that Track A handles via Pos
 
 Entry point: `track-b-ingest <xlsx>` (CLI) or Dagster webserver UI.
 
-```
-Source xlsx
-   │
-   ▼
-Polars excel reader               Per-sheet DataFrame, schemaless
-   │
-   ▼
-bronze_catalog_rows asset         Polars → pyiceberg → Iceberg table
-   │                              partitioned by (dealer, date)
-   │
-   ▼
-silver_parts asset                 Section detector (Python port) +
-   │                              Polars transformations →
-   │                              Iceberg silver table
-   │
-   ▼
-silver_fitment asset               Sheet name parser →
-   │                              Iceberg silver fitment table
-   │
-   ▼
-silver_images asset                Image hash registry →
-   │                              Iceberg silver images table
-   │
-   ▼
-gold_products_mart asset           dbt-duckdb materialises gold layer
-   │                              with JSONB-shape fitment aggregation
-   │
-   ▼
-gold_marketplace_view asset        dbt view ready for downstream sinks
+```mermaid
+flowchart LR
+    XLSX[📄 Source xlsx<br/>230 MB · 110 sheets] --> POLARS[Polars excel reader<br/>per-sheet DataFrame]
+    POLARS --> BRONZE[(bronze_catalog_rows<br/>Iceberg · partitioned<br/>dealer × date)]
+    BRONZE --> SP[silver_parts<br/>section detector +<br/>row normaliser]
+    BRONZE --> SF[silver_fitment<br/>sheet-name parser]
+    BRONZE --> SI[silver_images<br/>image hash registry]
+    SP --> GOLD[(gold_products_mart<br/>dbt-duckdb materialised<br/>JSON fitment aggregation)]
+    SF --> GOLD
+    SI --> GOLD
+    GOLD --> VIEW[gold_marketplace_view<br/>dbt view · ready for sinks]
+
+    style XLSX fill:#fef3c7,stroke:#d97706
+    style BRONZE fill:#fed7aa,stroke:#ea580c
+    style SP fill:#bbf7d0,stroke:#16a34a
+    style SF fill:#bbf7d0,stroke:#16a34a
+    style SI fill:#bbf7d0,stroke:#16a34a
+    style GOLD fill:#dbeafe,stroke:#2563eb
+    style VIEW fill:#e9d5ff,stroke:#9333ea
 ```
 
 Dagster asset checks gate each transition:
@@ -323,40 +341,53 @@ Entry point: `track-b-enrich --mode audit --limit N`.
 
 The flow mirrors Track A exactly because the `ILLMProvider` interface is ported one-to-one. The same `shared/llm-cache.jsonl` file is read by both tracks, so any cache entry seeded by Track A's claude-code-handoff workflow is immediately available to Track B without re-translation.
 
-```
-gold_products_mart (Iceberg table)
-   │
-   ▼  read into Polars DataFrame
-   │
-   ▼  sample N rows (deterministic order)
-   │
-   ▼  for each row:
-   │    provider.enrich(EnrichmentRequest(field='translate_cn_to_en', inputs={'cn': name_cn}))
-   │    consensus = jaccard_token_set(current_en, llm_en)
-   │
-   ▼  emit findings to stdout + (production) write to
-      inventoryflow.gold_translation_audit Iceberg table
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLI as track-b-enrich
+    participant Mart as gold_products_mart<br/>(Iceberg)
+    participant Provider as ILLMProvider
+    participant Cache as llm-cache.jsonl<br/>(shared with Track A)
+    participant Audit as gold_translation_audit<br/>(Iceberg)
+
+    CLI->>Mart: scan N sample rows
+    Mart-->>CLI: Polars DataFrame
+    loop for each row
+        CLI->>Provider: enrich(translate_cn_to_en, name_cn)
+        Provider->>Cache: lookup by SHA-256(field+inputs)
+        alt cache hit
+            Cache-->>Provider: cached English
+        else cache miss
+            Provider->>Provider: call upstream (Ollama / Claude / etc.)
+            Provider->>Cache: append entry
+        end
+        Provider-->>CLI: EnrichmentResponse
+        CLI->>CLI: jaccard_token_set(current_en, llm_en)
+    end
+    CLI->>Audit: write findings (agree / partial / disagree)
 ```
 
 ### 5.3 Streaming
 
 Track B's streaming layer is **Redpanda + RisingWave** rather than Track A's PostgreSQL `LISTEN/NOTIFY` + BullMQ. See ADR-010 for the choice rationale.
 
-```
-Lightspeed / eBay webhook
-   │
-   ▼  API Gateway (or Fastify routes from Track A)
-   │
-   ▼  Produce to Redpanda topic 'inventory.changes'
-   │
-   ▼  RisingWave CREATE SOURCE consumes topic
-   │
-   ▼  CREATE MATERIALIZED VIEW mv_live_inventory AS
-       SELECT ... FROM redpanda_source JOIN iceberg.gold_products_mart
-   │
-   ▼  CREATE SINK INTO postgres.live_inventory_view (upsert)
-   │
-   ▼  Track A catalog API serves the joined view to consumers
+```mermaid
+flowchart LR
+    WH[🌐 Lightspeed / eBay<br/>webhooks] --> GW[API Gateway<br/>or Track A Fastify]
+    GW --> RP[(Redpanda topic<br/>inventory.changes)]
+    RP --> RW[RisingWave<br/>CREATE SOURCE]
+    GOLD[(iceberg.gold_products_mart)] -.join.-> MV
+    RW --> MV[Materialised view<br/>mv_live_inventory]
+    MV --> SINK[CREATE SINK INTO<br/>postgres.live_inventory_view]
+    SINK --> PG[(PostgreSQL<br/>serving layer)]
+    PG --> API[Track A catalog API<br/>real-time stock served]
+
+    style WH fill:#fef3c7,stroke:#d97706
+    style RP fill:#fee2e2,stroke:#dc2626
+    style RW fill:#fae8ff,stroke:#a21caf
+    style GOLD fill:#dbeafe,stroke:#2563eb
+    style PG fill:#dbeafe,stroke:#2563eb
+    style API fill:#dcfce7,stroke:#16a34a
 ```
 
 The Iceberg gold mart and the RisingWave materialised view stay in sync because both are downstream of the same Redpanda event log.
@@ -576,12 +607,38 @@ The four parser modules (`cell_utils`, `section_detector`, `row_normalizer`, `fi
 
 `scripts/iceberg_roundtrip.py` exercises the full data path: xlsx → Polars parser → pyiceberg → Iceberg REST catalog → MinIO → DuckDB-on-Iceberg scan. Measured on the developer machine (Apple M2, Python 3.13.12):
 
-| Step                                | Time     |
-| ----------------------------------- | -------- |
-| Parse 230 MB xlsx → 11,095 raw rows | ~7s      |
-| Write 3,937 deduped rows to Iceberg | 5.7s     |
-| Read all rows back via pyiceberg    | 20 ms    |
-| DuckDB-on-Iceberg COUNT(*) scan     | 13 ms    |
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as iceberg_roundtrip.py
+    participant Parser as parser/parse_xlsx.py
+    participant REST as Iceberg REST catalog<br/>(:8181)
+    participant Minio as MinIO<br/>(:9100)
+    participant Duck as DuckDB-on-Iceberg
+
+    Script->>Parser: parse(230 MB xlsx)
+    Note over Parser: openpyxl streaming<br/>+ section detector<br/>+ row normaliser
+    Parser-->>Script: 11,095 raw rows → 3,937 unique
+    Script->>REST: create_namespace("inventoryflow")
+    Script->>REST: create_table("gold_products_mart")
+    REST->>Minio: PUT metadata.json + manifest
+    Script->>Minio: PUT parquet data files
+    Note right of Minio: 5.7s total write
+    Script->>REST: load_table()
+    REST-->>Script: TableMetadata
+    Script->>Minio: GET data files (Arrow scan)
+    Minio-->>Script: 3,937 rows · 20 ms
+    Script->>Duck: iceberg_scan(metadata_location)
+    Duck->>Minio: GET parquet via httpfs
+    Duck-->>Script: COUNT = 3937 · 13 ms
+```
+
+| Step                                | Measured time |
+| ----------------------------------- | ------------- |
+| Parse 230 MB xlsx → 11,095 raw rows | ~7s           |
+| Write 3,937 deduped rows to Iceberg | 5.7s          |
+| Read all rows back via pyiceberg    | 20 ms         |
+| DuckDB-on-Iceberg COUNT(*) scan     | 13 ms         |
 
 Fitment-lookup benchmark (`scripts/bench_fitment.py`, 500 iterations, real measurements committed to `docs/bench/track-b-bench-results.json`):
 
@@ -599,6 +656,17 @@ Track B is roughly seven times slower than Track A's PostgreSQL serving path for
 ## 9. Scaling Roadmap
 
 Track B is designed to handle 500 to 100,000 dealers. The scaling levers differ from Track A:
+
+```mermaid
+flowchart LR
+    P1[<b>Phase 1</b><br/>0–1,000 dealers<br/>Single VPS<br/>Polars + MinIO<br/>~$80/mo] --> P2
+    P2[<b>Phase 2</b><br/>1,000–10,000 dealers<br/>PySpark + S3 / R2<br/>Dagster scaled out<br/>~$400/mo] --> P3
+    P3[<b>Phase 3</b><br/>10,000–100,000 dealers<br/>Multi-region Iceberg<br/>Dagster Cloud<br/>~$2,500/mo]
+
+    style P1 fill:#dcfce7,stroke:#16a34a,color:#14532d
+    style P2 fill:#fef3c7,stroke:#d97706,color:#78350f
+    style P3 fill:#fae8ff,stroke:#a21caf,color:#581c87
+```
 
 ### 9.1 Phase one — single-node lakehouse (0 to 1,000 dealers)
 
@@ -659,6 +727,62 @@ Iceberg tables are partitioned by `dealer_id`. Per-tenant compute isolation is h
 ## 11. Metadata-Driven Control Plane
 
 Track A's metadata-driven control plane (`dealers` + `ingestion_patterns` + `dealer_pattern_bindings`) maps directly onto Dagster idioms in Track B without re-implementing the dispatch logic from scratch. The "onboard a dealer by INSERT, not deploy" promise survives the platform change.
+
+```mermaid
+erDiagram
+    DEALERS ||--o{ DEALER_PATTERN_BINDINGS : "has many"
+    INGESTION_PATTERNS ||--o{ DEALER_PATTERN_BINDINGS : "applied via"
+
+    DEALERS {
+        uuid id PK
+        text name
+        text status
+        text tier
+        text inferred_make
+        timestamptz onboarded_at
+        jsonb metadata
+    }
+    INGESTION_PATTERNS {
+        text pattern_name PK
+        text pattern_type "FILE_BATCH | API_PULL | CDC"
+        text handler_module "importlib path"
+        jsonb schema_signature
+        jsonb validation_rules
+        text default_freshness_sla
+        text default_schedule
+        int version
+    }
+    DEALER_PATTERN_BINDINGS {
+        bigserial id PK
+        uuid dealer_id FK
+        text pattern_name FK
+        jsonb params
+        text freshness_sla
+        text schedule
+        bool enabled
+        text last_run_sha256
+        timestamptz last_run_at
+    }
+```
+
+```mermaid
+flowchart LR
+    INSERT[👤 New dealer onboarded<br/>INSERT INTO dealers,<br/>bindings]:::user --> BINDINGS[(dealer_pattern_bindings)]
+    BINDINGS -.poll 30s.-> SENSOR[bindings_sensor<br/>Dagster MultiAssetSensor]
+    SENSOR --> PARTS[Register new<br/>dynamic partition key]
+    PARTS --> POLICY{AutoMaterialize<br/>Policy}
+    POLICY -- freshness lag &gt; SLA --> MAT[Materialise<br/>bronze_per_binding asset]
+    MAT --> HANDLER[load_handler<br/>via importlib]
+    HANDLER --> ICEBERG[(Iceberg bronze<br/>partitioned by binding)]
+    ICEBERG --> DOWN[silver + gold<br/>cascade auto]
+
+    classDef user fill:#fef3c7,stroke:#d97706,color:#78350f
+    style BINDINGS fill:#dbeafe,stroke:#2563eb
+    style SENSOR fill:#fae8ff,stroke:#a21caf
+    style POLICY fill:#fee2e2,stroke:#dc2626
+    style MAT fill:#dcfce7,stroke:#16a34a
+    style ICEBERG fill:#fed7aa,stroke:#ea580c
+```
 
 ### 11.1 Mapping Track A constructs to Dagster
 
@@ -789,6 +913,25 @@ Total operational burden of fully self-hosted deployment is approximately 12 to 
 ## 13. When to use Track A vs Track B
 
 Both implementations satisfy the test specification. They differ on production-readiness ceiling, operational profile, and the kinds of analytical workloads they enable. The decision is rarely "which is better" — it is "which fits the current stage."
+
+```mermaid
+quadrantChart
+    title Track A vs Track B — fit by stage and analytical demand
+    x-axis Low dealer count → High dealer count
+    y-axis Transactional / hot reads → Analytical / lineage / time-travel
+    quadrant-1 Track B sweet spot
+    quadrant-2 Hybrid — Track A serving + Track B analytics
+    quadrant-3 Track A sweet spot
+    quadrant-4 Track A scaled out
+    "Current InventoryFlow stage": [0.2, 0.3]
+    "Catalog API hot reads": [0.4, 0.15]
+    "Marketplace sync feeds": [0.55, 0.5]
+    "Schema-changes &gt; 1/week": [0.7, 0.78]
+    "Point-in-time data restore": [0.6, 0.85]
+    "Column-level lineage required": [0.65, 0.9]
+    "Streaming joins &gt; 1k events/s": [0.85, 0.7]
+    "Sub-week hiring submission": [0.15, 0.2]
+```
 
 | Dimension                                          | Pick Track A                                                                       | Pick Track B                                                                                  |
 | -------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
