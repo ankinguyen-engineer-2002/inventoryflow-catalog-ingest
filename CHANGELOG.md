@@ -6,6 +6,19 @@ Notable changes to this submission. Format: [Keep a Changelog](https://keepachan
 
 ## [Unreleased]
 
+### Final — submission lead document
+
+- Added `SUBMISSION.md` at repo root as the primary entry point for
+  reviewers. One page summarising what the test asked for, what was
+  delivered, how to run it in three commands, and verification queries.
+- Updated `README.md` primary callout to lead with `SUBMISSION.md`.
+  Deeper documents (TRACK_A.md, PLAN.md, ADRs) remain as optional
+  architectural review material linked from SUBMISSION.md.
+- Rationale: the test specification explicitly weights pragmatism and
+  speed. Leading the repository with a concise summary respects that
+  while preserving the depth required to demonstrate senior judgment
+  for those reviewers who want it.
+
 ### Day 5 — Track A documentation consolidated
 
 - Single canonical `docs/TRACK_A.md` consolidates all Track A documentation:

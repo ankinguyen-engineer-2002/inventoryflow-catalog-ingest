@@ -33,15 +33,15 @@
 
 <br/>
 
-[**📐 Track A Documentation**](./docs/TRACK_A.md)  ·  [**📖 Master Plan**](./PLAN.md)  ·  [**⚖️ Track A vs Track B**](./docs/COMPARISON.md)  ·  [**🏛 Architecture Decisions**](./docs/decisions/)  ·  [**❓ Open Questions**](./docs/QUESTIONS_FOR_RECRUITER.md)
+[**⭐ Read the 1-page submission**](./SUBMISSION.md)  ·  [**📐 Track A deep-dive**](./docs/TRACK_A.md)  ·  [**📖 Master plan**](./PLAN.md)  ·  [**⚖️ Track A vs B**](./docs/COMPARISON.md)  ·  [**🏛 ADRs**](./docs/decisions/)
 
 </div>
 
 ---
 
-> [!NOTE]
-> **This is a senior-engineer take-home submission, not a deployed product.**
-> The repo ships as **source code + 1,500-line engineering plan (v2) + 14 ADRs + 18-dimension comparison matrix + v10 control-plane capability matrix**. Every component runs locally — the reviewer pays nothing, signs up for nothing, enters no API key.
+> [!IMPORTANT]
+> **Reviewers short on time: read [`SUBMISSION.md`](./SUBMISSION.md) (one page, ~3 minutes).**
+> It states what the test asked for, what was delivered, how to run it in three commands, and which queries verify the outputs. The deeper documents (Track A reference, master plan, ADRs) are linked from there as optional reading for architectural review.
 
 ---
 
