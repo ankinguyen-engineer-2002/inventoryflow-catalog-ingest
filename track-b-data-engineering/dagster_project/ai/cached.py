@@ -95,7 +95,17 @@ class CachedLLMProvider:
 
     @staticmethod
     def _compute_key(req: EnrichmentRequest) -> str:
-        sorted_inputs = {k: req.inputs[k] for k in sorted(req.inputs.keys())}
+        """Compose a cache key from (field, inputs).
+
+        Special case for vision requests: if `image_sha256` is present,
+        drop `image_b64` from the key payload — the SHA already uniquely
+        identifies the image bytes, and including the base64 string makes
+        the JSON payload absurdly large to hash and serialise.
+        """
+        inputs = dict(req.inputs)
+        if "image_sha256" in inputs and "image_b64" in inputs:
+            del inputs["image_b64"]
+        sorted_inputs = {k: inputs[k] for k in sorted(inputs.keys())}
         payload = json.dumps(
             {"field": req.field, "inputs": sorted_inputs},
             separators=(",", ":"),

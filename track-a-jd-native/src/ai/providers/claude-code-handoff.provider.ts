@@ -38,7 +38,7 @@ export interface HandoffOptions {
 interface ResultEntry {
   id: string;
   field: string;
-  result: string | number[] | null;
+  result: string | string[] | null;
   confidence?: "high" | "medium" | "low";
 }
 

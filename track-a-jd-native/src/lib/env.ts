@@ -36,13 +36,22 @@ const Schema = z.object({
 
   // ── LLM provider ────────────────────────────────────────────
   LLM_PROVIDER: z
-    .enum(["mock", "cached", "claude-code-handoff", "ollama", "gemini", "anthropic"])
+    .enum([
+      "mock",
+      "cached",
+      "claude-code-handoff",
+      "ollama",
+      "ollama-vision",
+      "gemini",
+      "anthropic",
+    ])
     .default("cached"),
   LLM_CACHE_PATH: z.string().default("../shared/llm-cache.jsonl"),
 
   // Provider-specific (optional)
   OLLAMA_URL: z.string().url().default("http://localhost:11434"),
-  OLLAMA_MODEL: z.string().default("qwen2-vl:7b"),
+  OLLAMA_MODEL: z.string().default("qwen2.5:7b"),
+  OLLAMA_VISION_MODEL: z.string().default("qwen2.5vl:7b"),
   GEMINI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
 

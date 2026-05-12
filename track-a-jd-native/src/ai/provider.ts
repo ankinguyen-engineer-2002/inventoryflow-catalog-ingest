@@ -28,6 +28,10 @@ export interface EnrichmentRequest {
     cn?: string;
     /** For extract_callouts: R2 key of the schematic image. */
     image_r2_key?: string;
+    /** For extract_callouts: base64-encoded image bytes (preferred for local providers). */
+    image_b64?: string;
+    /** For extract_callouts: SHA-256 of the image (used as cache key without bloating with b64). */
+    image_sha256?: string;
     /** For infer_make: model code. */
     model_code?: string;
   };
@@ -38,8 +42,8 @@ export interface EnrichmentRequest {
 export interface EnrichmentResponse {
   id: string;
   field: EnrichmentField;
-  /** Result is the natural output for the field — string for translate/infer, number[] for callouts. */
-  result: string | number[] | null;
+  /** Result is the natural output for the field — string for translate/infer, string[] for callouts ("1", "1-1", "1-6L"). */
+  result: string | string[] | null;
   /** Confidence, if the provider can supply it. */
   confidence?: "high" | "medium" | "low";
   /** Provider metadata for audit. */

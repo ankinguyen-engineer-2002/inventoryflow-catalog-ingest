@@ -10,6 +10,7 @@ import { CachedLLMProvider } from "./providers/cached.provider.js";
 import { MockProvider } from "./providers/mock.provider.js";
 import { ClaudeCodeHandoffProvider } from "./providers/claude-code-handoff.provider.js";
 import { OllamaProvider } from "./providers/ollama.provider.js";
+import { OllamaVisionProvider } from "./providers/ollama-vision.provider.js";
 import { AnthropicBatchProvider } from "./providers/anthropic-batch.provider.js";
 import type { ILLMProvider } from "./provider.js";
 import { logger } from "../lib/logger.js";
@@ -39,6 +40,12 @@ function pickUpstream(): ILLMProvider {
       return new OllamaProvider({
         baseUrl: env.OLLAMA_URL,
         model: env.OLLAMA_MODEL,
+      });
+
+    case "ollama-vision":
+      return new OllamaVisionProvider({
+        baseUrl: env.OLLAMA_URL,
+        model: env.OLLAMA_VISION_MODEL ?? "qwen2.5vl:7b",
       });
 
     case "anthropic":

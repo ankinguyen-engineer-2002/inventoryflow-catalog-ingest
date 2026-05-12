@@ -10,6 +10,7 @@ from .cached import CachedLLMProvider
 from .handoff import ClaudeCodeHandoffProvider
 from .mock import MockProvider
 from .ollama import OllamaProvider
+from .ollama_vision import OllamaVisionProvider
 from .provider import ILLMProvider
 
 log = logging.getLogger(__name__)
@@ -50,6 +51,12 @@ def _pick_upstream(name: str, handoff_dir: Path) -> ILLMProvider:
         return OllamaProvider(
             base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             model=os.environ.get("OLLAMA_MODEL", "qwen2.5:7b"),
+        )
+
+    if name == "ollama-vision":
+        return OllamaVisionProvider(
+            base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
+            model=os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b"),
         )
 
     if name == "anthropic":

@@ -27,7 +27,7 @@ export class MockProvider implements ILLMProvider {
   readonly name = "mock";
 
   async enrich(req: EnrichmentRequest): Promise<EnrichmentResponse> {
-    let result: string | number[] | null = null;
+    let result: string | string[] | null = null;
     if (req.field === "translate_cn_to_en") {
       const cn = req.inputs.cn ?? "";
       result = KNOWN_TRANSLATIONS[cn] ?? `[mock-translate: ${cn.slice(0, 20)}]`;
