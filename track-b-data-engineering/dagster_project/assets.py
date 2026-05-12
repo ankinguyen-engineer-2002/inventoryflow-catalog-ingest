@@ -33,15 +33,17 @@ from dagster import AssetIn, MetadataValue, Output, asset
 from pyiceberg.catalog import Catalog
 from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
 
+from .resources import IcebergCatalogResource, SourceXlsxResource
+
 # Make the sibling `parser/` package importable when Dagster auto-loads
-# this module from various working directories.
+# this module from various working directories. Must happen before the
+# `parser` import below; ruff E402/I001 silenced because the side-effect
+# is intentional.
 _PARSER_ROOT = Path(__file__).resolve().parent.parent
 if str(_PARSER_ROOT) not in sys.path:
     sys.path.insert(0, str(_PARSER_ROOT))
 
-from parser.parse_xlsx import FitmentEntry, ParsedProduct, parse_xlsx  # noqa: E402
-
-from .resources import IcebergCatalogResource, SourceXlsxResource
+from parser.parse_xlsx import FitmentEntry, parse_xlsx  # noqa: E402, I001
 
 NAMESPACE = "inventoryflow"
 DEMO_DEALER_ID = "7207c961-a7cc-46a7-9c5e-34b292a2cc68"

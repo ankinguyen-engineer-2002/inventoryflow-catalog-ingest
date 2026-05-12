@@ -17,12 +17,6 @@ from dagster import materialize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dagster_project.asset_checks import (  # noqa: E402
-    check_gold_fitment_shape,
-    check_gold_row_count_matches_track_a,
-    check_silver_parts_have_part_number,
-    check_silver_parts_unique,
-)
 from dagster_project.assets import (  # noqa: E402
     bronze_catalog_rows,
     gold_products_mart,
@@ -55,6 +49,7 @@ def main() -> int:
     # validations imperatively so the CLI reports parity numbers.
     print("\n=== Validation checks ===\n")  # noqa: T201
     import polars as pl
+
     from dagster_project.resources import IcebergCatalogResource
 
     catalog = IcebergCatalogResource().load()
@@ -77,8 +72,21 @@ def main() -> int:
         ),
         (
             "silver_parts unique (dealer, part_number)",
-            silver_df.group_by(["_dealer_id", "part_number"]).len().filter(pl.col("len") > 1).height == 0,
-            {"duplicate_groups": silver_df.group_by(["_dealer_id", "part_number"]).len().filter(pl.col("len") > 1).height},
+            (
+                silver_df.group_by(["_dealer_id", "part_number"])
+                .len()
+                .filter(pl.col("len") > 1)
+                .height
+                == 0
+            ),
+            {
+                "duplicate_groups": (
+                    silver_df.group_by(["_dealer_id", "part_number"])
+                    .len()
+                    .filter(pl.col("len") > 1)
+                    .height
+                )
+            },
         ),
         (
             "gold.fitment is valid JSON array",
