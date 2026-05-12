@@ -640,6 +640,22 @@ sequenceDiagram
 | Read all rows back via pyiceberg    | 20 ms         |
 | DuckDB-on-Iceberg COUNT(*) scan     | 13 ms         |
 
+### 8.6 Full Dagster asset graph materialisation
+
+`scripts/materialize_all.py` runs the three Dagster assets and four asset checks in-process. This is what the `dagster dev` web UI also runs when a reviewer clicks "Materialize all". Same parser, same data path, same parity result — but now through the asset-graph orchestration.
+
+| Asset / check                                  | Result               |
+| ---------------------------------------------- | -------------------- |
+| `bronze_catalog_rows`                          | ✅ 11,095 rows · 7.03s |
+| `silver_parts`                                 | ✅ 3,937 rows · 0.2s   |
+| `gold_products_mart`                           | ✅ 3,937 rows · 0.1s   |
+| `silver_parts_have_non_null_part_number`       | ✅ 0 nulls            |
+| `silver_parts_unique_part_number`              | ✅ 0 duplicates       |
+| `gold_fitment_is_valid_json_array`             | ✅ 0 invalid          |
+| `gold_row_count_matches_track_a` (±1%)         | ✅ 3,937 vs 3,938 (0.025% delta) |
+
+The Dagster asset graph is the canonical Track B run path. Standalone `scripts/iceberg_roundtrip.py` remains useful as the no-orchestration baseline that doesn't require Dagster installed; both share the same `parser/` package so they cannot diverge.
+
 Fitment-lookup benchmark (`scripts/bench_fitment.py`, 500 iterations, real measurements committed to `docs/bench/track-b-bench-results.json`):
 
 | Percentile | Track A (PG JSONB-GIN) | Track B (DuckDB-on-Iceberg) |
@@ -1010,6 +1026,7 @@ Each dealer can be migrated independently because Track A's `dealers` and `deale
 | `poetry run dbt test --profiles-dir dbt`| Run dbt tests only                                                  |
 | `python3 scripts/parity_check.py`      | Run the parser against the source xlsx, write CSV, diff against Track A's reference CSV |
 | `python3 scripts/iceberg_roundtrip.py` | End-to-end parser → pyiceberg → Iceberg REST → DuckDB-on-Iceberg roundtrip |
+| `python3 scripts/materialize_all.py`   | Full Dagster asset graph materialisation (bronze → silver → gold + 4 checks) |
 | `python3 scripts/bench_fitment.py --queries 500` | DuckDB-on-Iceberg fitment-query latency benchmark            |
 
 ---
