@@ -47,7 +47,7 @@ async def main_async() -> int:
     provider = OllamaVisionProvider()
     log.info("Calling Ollama Vision (this is the first inference — model loads into RAM)...")
     t0 = time.perf_counter()
-    response = await provider.enrich(
+    await provider.enrich(
         EnrichmentRequest(
             id=f"smoke:{img.sha256}",
             field="extract_callouts",
@@ -85,7 +85,10 @@ async def main_async() -> int:
     total = 1586
     concurrency = 4
     eta_min = total * (warm_ms / 1000) / concurrency / 60
-    print(f"\nProjected full run ({total} images × concurrency={concurrency}): ~{eta_min:.0f} minutes")  # noqa: T201
+    print(  # noqa: T201
+        f"\nProjected full run ({total} images × concurrency={concurrency}): "
+        f"~{eta_min:.0f} minutes"
+    )
 
     return 0 if response2.result else 1
 

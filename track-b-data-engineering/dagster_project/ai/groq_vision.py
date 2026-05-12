@@ -155,7 +155,10 @@ class GroqVisionProvider:
                 wait_s = 2.0 ** attempt
             # Cap the wait to keep things sane (Groq sometimes returns >60s on TPM exhaust).
             wait_s = min(wait_s, 30.0)
-            log.info("Groq 429 — sleeping %.1fs (attempt %d/%d)", wait_s, attempt, self._max_retries)
+            log.info(
+                "Groq 429 — sleeping %.1fs (attempt %d/%d)",
+                wait_s, attempt, self._max_retries,
+            )
             await asyncio.sleep(wait_s)
 
         latency_ms = int((time.monotonic() - start) * 1000)
