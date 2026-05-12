@@ -199,6 +199,103 @@ def silver_parts(
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# Silver — vision-extracted callouts. Reads from shared LLM cache.
+# ─────────────────────────────────────────────────────────────────────────
+@asset(
+    name="silver_image_callouts",
+    group_name="silver",
+    description=(
+        "Vision-LLM-extracted callout numbers per schematic image, keyed by "
+        "image SHA-256. Sources from the shared llm-cache.jsonl populated by "
+        "scripts/vision_extract_all.py (Groq Llama-4 Scout 17B or Ollama "
+        "qwen2.5vl:7b). Materialisation is a cache replay — no upstream LLM "
+        "calls during asset run, so the asset is deterministic and free."
+    ),
+    compute_kind="polars",
+    ins={"_bronze": AssetIn(key="bronze_catalog_rows")},
+)
+def silver_image_callouts(
+    context, _bronze: int, iceberg_catalog: IcebergCatalogResource, source_xlsx: SourceXlsxResource
+) -> Output[int]:
+    """Replay vision-LLM cache → typed callouts table on Iceberg.
+
+    For each unique image extracted from the source xlsx, looks up its
+    callouts in the shared cache. Cache hits are instant; cache misses
+    fall back to whatever the configured `LLM_PROVIDER` resolves to —
+    in production that's Groq Vision (or Anthropic Vision if upgraded).
+    """
+    import asyncio
+    import base64
+    import sys
+    from pathlib import Path
+
+    # Ensure parser package is on sys.path when imported from Dagster.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from parser.image_extractor import extract_unique_images  # noqa: E402
+
+    from .ai import EnrichmentRequest, create_llm_provider  # noqa: E402
+
+    catalog = iceberg_catalog.load()
+    images = extract_unique_images(source_xlsx.path)
+    context.log.info("Extracted %d unique images", len(images))
+
+    # Use ollama-vision is the default upstream for Mock fallback; the
+    # CachedLLMProvider wrapper will short-circuit on hit. Real upstream
+    # is whatever LLM_PROVIDER env says.
+    provider = create_llm_provider()
+
+    async def lookup_one(img):  # type: ignore[no-untyped-def]
+        b64 = base64.b64encode(img.raw_bytes).decode("ascii")
+        return await provider.enrich(
+            EnrichmentRequest(
+                id=f"vision:{img.sha256}",
+                field="extract_callouts",
+                inputs={"image_b64": b64, "image_sha256": img.sha256},
+            )
+        )
+
+    async def run_all():  # type: ignore[no-untyped-def]
+        return await asyncio.gather(*(lookup_one(img) for img in images))
+
+    responses = asyncio.run(run_all())
+
+    rows = []
+    for img, resp in zip(images, responses, strict=True):
+        callouts = resp.result if isinstance(resp.result, list) else []
+        rows.append({
+            "image_sha256": img.sha256,
+            "callouts_json": json.dumps(callouts, ensure_ascii=False),
+            "callout_count": len(callouts),
+            "confidence": resp.confidence or "low",
+            "vision_provider": resp.meta.provider,
+            "cache_hit": resp.meta.cache_hit,
+            "source_sheets_json": json.dumps(list(img.source_sheets), ensure_ascii=False),
+            "image_size_bytes": img.size_bytes,
+        })
+
+    if not rows:
+        context.log.warning("No image-callout rows produced")
+        return Output(value=0, metadata={"row_count": 0})
+
+    arrow = pa.Table.from_pylist(rows)
+    _overwrite_table(catalog, (NAMESPACE, "silver_image_callouts"), arrow)
+
+    cache_hits = sum(1 for r in rows if r["cache_hit"])
+    with_callouts = sum(1 for r in rows if r["callout_count"] > 0)
+
+    return Output(
+        value=len(rows),
+        metadata={
+            "row_count": len(rows),
+            "cache_hits": cache_hits,
+            "cache_hit_rate_pct": round(100 * cache_hits / len(rows), 1),
+            "images_with_callouts": with_callouts,
+            "iceberg_table": f"{NAMESPACE}.silver_image_callouts",
+        },
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Gold — business mart with JSON fitment column.
 # ─────────────────────────────────────────────────────────────────────────
 @asset(

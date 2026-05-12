@@ -74,6 +74,29 @@ def check_silver_parts_unique(
     )
 
 
+@asset_check(asset="silver_image_callouts", name="silver_image_callouts_row_count")
+def check_silver_image_callouts_count(
+    iceberg_catalog: IcebergCatalogResource,
+) -> AssetCheckResult:
+    """silver_image_callouts must have one row per unique image (1,586)."""
+    df = _load_df(iceberg_catalog.load(), "silver_image_callouts")
+    if df is None or df.is_empty():
+        return AssetCheckResult(passed=False, metadata={"reason": "table_missing_or_empty"})
+
+    target = 1586
+    rows = df.shape[0]
+    with_callouts = df.filter(pl.col("callout_count") > 0).shape[0]
+    return AssetCheckResult(
+        passed=abs(rows - target) <= 1,
+        metadata={
+            "total_images": rows,
+            "target": target,
+            "images_with_callouts": with_callouts,
+            "coverage_pct": round(100 * with_callouts / max(rows, 1), 1),
+        },
+    )
+
+
 @asset_check(asset="gold_products_mart", name="gold_fitment_is_valid_json_array")
 def check_gold_fitment_shape(
     iceberg_catalog: IcebergCatalogResource,

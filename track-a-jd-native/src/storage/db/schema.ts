@@ -143,6 +143,24 @@ export const productImages = pgTable(
 );
 
 /**
+ * Vision-LLM extracted callout numbers per unique schematic image.
+ * Keyed by image SHA-256 (deduped at the image level). Populated by
+ * `pnpm extract-callouts` reading from the shared LLM cache.
+ * See ADR-007 §Vision.
+ */
+export const imageCallouts = pgTable("image_callouts", {
+  imageSha256: text("image_sha256").primaryKey(),
+  callouts: jsonb("callouts").notNull().default([]),
+  calloutCount: integer("callout_count").notNull().default(0),
+  confidence: text("confidence").notNull().default("low"),
+  visionProvider: text("vision_provider").notNull(),
+  cacheHit: boolean("cache_hit").notNull().default(true),
+  sourceSheets: jsonb("source_sheets").notNull().default([]),
+  imageSizeBytes: integer("image_size_bytes"),
+  extractedAt: timestamp("extracted_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Cross-reference: OLD/NEW part number history + distributor SKUs.
  * See ADR-006.
  */

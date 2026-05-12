@@ -31,6 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dagster_project.ai.cached import CachedLLMProvider  # noqa: E402
+from dagster_project.ai.groq_vision import GroqVisionProvider  # noqa: E402
 from dagster_project.ai.ollama_vision import OllamaVisionProvider  # noqa: E402
 from dagster_project.ai.provider import EnrichmentRequest  # noqa: E402
 from parser.image_extractor import extract_unique_images  # noqa: E402
@@ -87,6 +88,19 @@ async def main_async(argv: list[str] | None = None) -> int:
                         help="Cap to N images (0 = all)")
     parser.add_argument("--min-size-bytes", type=int, default=0,
                         help="Skip images smaller than this (likely icons)")
+    parser.add_argument(
+        "--provider",
+        choices=["ollama", "groq"],
+        default="ollama",
+        help="Which vision upstream to use",
+    )
+    parser.add_argument(
+        "--min-interval-s",
+        type=float,
+        default=0.0,
+        help="Minimum seconds between requests (token-bucket pacing). "
+             "For Groq free tier set ~3.5 to stay under 18 req/min on Llama-4 Scout.",
+    )
     args = parser.parse_args(argv)
 
     log.info("Extracting images from %s", args.xlsx)
@@ -101,7 +115,13 @@ async def main_async(argv: list[str] | None = None) -> int:
         images = images[: args.limit]
         log.info("Limited to first %d images", len(images))
 
-    upstream = OllamaVisionProvider()
+    if args.provider == "groq":
+        upstream = GroqVisionProvider(min_interval_s=args.min_interval_s)
+    else:
+        upstream = OllamaVisionProvider()
+    log.info("Using upstream: %s", upstream.name)
+    if args.min_interval_s > 0:
+        log.info("Token-bucket pacing: min %.2fs between upstream calls", args.min_interval_s)
     provider = CachedLLMProvider(upstream, args.cache)
 
     semaphore = asyncio.Semaphore(args.concurrency)

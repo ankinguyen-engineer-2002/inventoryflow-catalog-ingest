@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from .cached import CachedLLMProvider
+from .groq_vision import GroqVisionProvider
 from .handoff import ClaudeCodeHandoffProvider
 from .mock import MockProvider
 from .ollama import OllamaProvider
@@ -57,6 +58,14 @@ def _pick_upstream(name: str, handoff_dir: Path) -> ILLMProvider:
         return OllamaVisionProvider(
             base_url=os.environ.get("OLLAMA_URL", "http://localhost:11434"),
             model=os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b"),
+        )
+
+    if name == "groq-vision":
+        return GroqVisionProvider(
+            api_key=os.environ.get("GROQ_API_KEY"),
+            model=os.environ.get(
+                "GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"
+            ),
         )
 
     if name == "anthropic":

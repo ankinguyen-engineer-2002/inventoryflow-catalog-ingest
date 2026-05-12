@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dagster_project.assets import (  # noqa: E402
     bronze_catalog_rows,
     gold_products_mart,
+    silver_image_callouts,
     silver_parts,
 )
 from dagster_project.resources import default_resources  # noqa: E402
@@ -27,7 +28,7 @@ from dagster_project.resources import default_resources  # noqa: E402
 
 def main() -> int:
     result = materialize(
-        assets=[bronze_catalog_rows, silver_parts, gold_products_mart],
+        assets=[bronze_catalog_rows, silver_parts, silver_image_callouts, gold_products_mart],
         resources=default_resources(),
     )
 
