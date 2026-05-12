@@ -45,7 +45,9 @@ PROMPT_TEMPLATE_VER = "gemini-vision-callouts-v1"
 DEFAULT_MODEL = "gemini-2.5-flash"
 DEFAULT_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
-_CALLOUT_PROMPT = """Look at this exploded-view parts diagram from a motorcycle/ATV service catalog. List every callout number you can read in the image (numbers like 1, 2, 3, or sub-callouts like 1-1, 1-6L, 1-6R).
+_CALLOUT_PROMPT = """Look at this exploded-view parts diagram from a motorcycle/ATV \
+service catalog. List every callout number you can read in the image (numbers \
+like 1, 2, 3, or sub-callouts like 1-1, 1-6L, 1-6R).
 
 Return ONLY a JSON array of strings, no commentary. Example: ["1", "2", "3", "1-1", "1-6L"]
 

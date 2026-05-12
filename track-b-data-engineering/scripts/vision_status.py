@@ -59,14 +59,14 @@ def main() -> int:
     callout_pct = 100 * with_callouts / total if total else 0
 
     print("=" * 60)  # noqa: T201
-    print(f"  Vision cache status")  # noqa: T201
+    print("  Vision cache status")  # noqa: T201
     print("=" * 60)  # noqa: T201
     print(f"  Total unique images processed : {total} / {total_target} ({coverage_pct:.1f}%)")  # noqa: T201
     print(f"  Remaining to process          : {remaining}")  # noqa: T201
     print(f"  Images with real callouts     : {with_callouts} ({callout_pct:.1f}% of processed)")  # noqa: T201
     print(f"  Null results (transient err)  : {null_results}")  # noqa: T201
     print("")  # noqa: T201
-    print(f"  By provider:")  # noqa: T201
+    print("  By provider:")  # noqa: T201
     for provider, count in by_provider.most_common():
         print(f"    {provider:30s} {count:>5}")  # noqa: T201
     print("")  # noqa: T201
@@ -74,9 +74,9 @@ def main() -> int:
     if remaining > 0:
         days_at_1k = max(1, (remaining + 999) // 1000)
         print(f"  → Estimated days to 100% @ Groq 1k RPD: {days_at_1k}")  # noqa: T201
-        print(f"  → Run: ./scripts/vision_daily_run.sh")  # noqa: T201
+        print("  → Run: ./scripts/vision_daily_run.sh")  # noqa: T201
     else:
-        print(f"  ✅ Full coverage reached. Time to commit.")  # noqa: T201
+        print("  ✅ Full coverage reached. Time to commit.")  # noqa: T201
     print("")  # noqa: T201
     return 0
 
