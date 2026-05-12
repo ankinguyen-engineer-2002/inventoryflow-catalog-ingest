@@ -121,54 +121,36 @@ backed by SHA-256 dedup. This addendum spells it out.
 
 ## The 5 levers
 
-```
-                       ┌──────────────────────────────────┐
-                       │  Request: extract_callouts(img)  │
-                       └──────────────┬───────────────────┘
-                                      │
-                                      ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │  Tier 0: CACHE (CachedLLMProvider, SHA-256 keyed)        │
-   │  Steady-state hit-rate: ~99% on production catalogs      │
-   │  → Hit: return cached, $0, 0ms                            │
-   │  → Miss: continue                                          │
-   └──────────────────────────┬───────────────────────────────┘
-                              │ miss
-                              ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │  Tier 1: FREE OCR SPECIALIST                              │
-   │  OpenRouter `baidu/qianfan-ocr-fast:free`                 │
-   │  Strength: OCR-tuned, 3s/image, schematics are its home   │
-   │  Quota: 50 RPD free (1000 with $10 ever credited)         │
-   │  Pass: confidence ≥ medium AND ≥3 callouts                │
-   │  → escalate on low confidence                              │
-   └──────────────────────────┬───────────────────────────────┘
-                              │ low conf
-                              ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │  Tier 2: FREE GENERAL VISION (rotating)                   │
-   │  Groq Llama-4 Scout 17B-16e — 30k TPM, 1k RPD free        │
-   │  Cerebras Llama-3.2 90B — daily quota                     │
-   │  Together AI — $5 free credit                              │
-   │  Pick by QuotaTracker.pick_provider_with_most_remaining() │
-   │  Pass: confidence ≥ medium AND ≥3 callouts                │
-   └──────────────────────────┬───────────────────────────────┘
-                              │ still uncertain / all exhausted
-                              ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │  Tier 3: SELF-HOST OLLAMA                                 │
-   │  qwen2.5vl:7b on dedicated GPU (cloud A10 / on-prem)      │
-   │  Quota: unlimited (own hardware), 1-5s/image              │
-   │  $0 marginal cost after sunk hardware                      │
-   └──────────────────────────┬───────────────────────────────┘
-                              │ last-resort or business-critical
-                              ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │  Tier 4: PAID BATCH                                       │
-   │  Anthropic Batch API — Claude 3.5 Haiku Vision            │
-   │  50% off realtime, 24h SLA                                 │
-   │  ~$0.0008/image, used only for explicit re-process flags  │
-   └──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    REQ[/"extract_callouts(image_b64, sha256)"/]:::req
+    REQ --> T0
+
+    T0{{"Tier 0 — CACHE<br/>SHA-256 keyed JSONL<br/>~99% hit at steady state<br/>$0 · 0 ms"}}:::cache
+    T0 -- hit --> DONE([return cached result]):::done
+    T0 -- miss --> T1
+
+    T1["Tier 1 — FREE OCR SPECIALIST<br/>OpenRouter qianfan-ocr-fast<br/>50 RPD · 3 s/img<br/>OCR-tuned for schematics"]:::free
+    T1 -- conf ≥ medium &amp; ≥3 callouts --> WRITE([write cache → return]):::done
+    T1 -- low conf or quota out --> T2
+
+    T2["Tier 2 — FREE GENERAL VISION<br/>Groq Llama-4 Scout · Cerebras · Together<br/>rotated by QuotaTracker<br/>1 s/img"]:::free
+    T2 -- conf ≥ medium &amp; ≥3 callouts --> WRITE
+    T2 -- low conf or all exhausted --> T3
+
+    T3["Tier 3 — SELF-HOST<br/>Ollama qwen2.5vl:7b<br/>dedicated GPU pod<br/>1–5 s/img · unlimited"]:::selfhost
+    T3 -- any non-null result --> WRITE
+    T3 -- explicit re-process flag --> T4
+
+    T4["Tier 4 — PAID BATCH<br/>Anthropic Claude Haiku Vision<br/>$0.0008/img · 24 h SLA<br/>opt-in only"]:::paid
+    T4 --> WRITE
+
+    classDef req fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef cache fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef free fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef selfhost fill:#fae8ff,stroke:#a21caf,color:#581c87
+    classDef paid fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef done fill:#bbf7d0,stroke:#16a34a,color:#14532d
 ```
 
 ## The math at 10k files/week
@@ -195,6 +177,18 @@ Workload assumption:
 Versus the naive "just pay" baseline of **$26,000/year**, the tier
 architecture asymptotes 130× cheaper.
 
+```mermaid
+flowchart LR
+    A["💸 Naive baseline<br/>$26,000/year<br/>1 paid call per image<br/>no cache, no fallback"]:::bad --> X{"Apply<br/>5-tier<br/>architecture"}:::lever
+    X --> B["✅ Tiered actual<br/>~$200/year<br/>99% cache · free Tier 1-2<br/>self-host Tier 3<br/>paid only on opt-in"]:::good
+    X --> N["Savings:<br/><b>$25,800/year</b><br/><b>130× cheaper</b>"]:::savings
+
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef savings fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef lever fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+```
+
 ### Why the cache hit rate is so high
 
 This is the non-obvious bit. Catalog data has *physical* dedup — the
@@ -207,12 +201,18 @@ same brake caliper appears in:
 Same image bytes → same SHA-256 → 1 LLM call ever, across hundreds of
 documents containing that part diagram. The cache hit rate compounds:
 
-| Time      | Unique images seen | Hit rate |
-| --------- | ------------------ | -------- |
-| Week 1    | 500k               | 0%       |
-| Week 4    | ~600k (+20% new)   | ~80%     |
-| Week 12   | ~700k              | ~95%     |
-| Month 6   | ~800k              | ~99%     |
+```mermaid
+flowchart LR
+    W1["Week 1<br/>0% hits<br/>500k cold calls"]:::cold --> W4
+    W4["Week 4<br/>80% hits<br/>~100k new calls"]:::warming --> W12
+    W12["Week 12<br/>95% hits<br/>~25k new calls"]:::hot --> M6
+    M6["Month 6+<br/>99% hits<br/>~5k new calls<br/>steady state"]:::steady
+
+    classDef cold fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef warming fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef hot fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef steady fill:#dcfce7,stroke:#16a34a,color:#14532d
+```
 
 After month 6 the cache *is* the system — upstream LLMs become a
 "new-image-handler" only, not a hot path.
@@ -244,13 +244,41 @@ explicit TOS violation. The legitimate alternative is **one account per
 *distinct* provider** — Groq + OpenRouter + Cerebras + Together = 4
 separate companies = 4 separate accounts = 100% compliant.
 
-Per provider:
-- Groq:        1,000 RPD free, 30k TPM
-- OpenRouter:   50 RPD free at 0 credits, 1,000 with any top-up
-- Cerebras:     variable daily quota by model
-- Together:     $5 free credit ≈ 2,500 vision calls
+```mermaid
+flowchart TD
+    Q["💡 Need more free quota.<br/>How?"]:::question
+    Q --> A1["❌ 4× Groq accounts<br/>(same company)"]:::bad
+    Q --> A2["✅ 1× per provider<br/>(different companies)"]:::good
 
-Across all 4: ~5,000 free calls/day, no TOS violation.
+    A1 --> B1["TOS violation"]:::bad
+    A1 --> B2["Device fingerprint detect"]:::bad
+    A1 --> B3["Ban risk — ALL keys"]:::bad
+    A1 --> B4["Future paid lock-out"]:::bad
+
+    A2 --> C1["Groq 1k RPD · 500k TPD"]:::ok
+    A2 --> C2["OpenRouter 50 RPD free"]:::ok
+    A2 --> C3["Gemini 250 RPD"]:::ok
+    A2 --> C4["NVIDIA NIM 1k credits"]:::ok
+    A2 --> C5["Hyperbolic $10 credit"]:::ok
+    A2 --> C6["Anthropic $5 trial"]:::ok
+
+    A2 --> T["Sum: ~5,000 free calls/day<br/>TOS compliant"]:::winner
+
+    classDef question fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef ok fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef winner fill:#bbf7d0,stroke:#16a34a,color:#14532d
+```
+
+Per provider:
+- Groq:        1,000 RPD free, 500k TPD vision
+- OpenRouter:   50 RPD free at 0 credits, 1,000 with any top-up
+- Gemini:       250 RPD on `gemini-2.5-flash` free tier
+- NVIDIA NIM:   1,000 initial credits + 100/day refill
+- Anthropic:    $5 trial credit ≈ 10,000 Haiku Vision calls
+
+Across all: ~5,000+ free calls/day, no TOS violation.
 
 ## When to escalate Tier 3 → Tier 4
 

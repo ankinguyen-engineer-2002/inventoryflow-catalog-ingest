@@ -29,7 +29,27 @@ source .venv-parity/bin/activate
 pip install polars openpyxl pyarrow 'pyiceberg[s3fs,duckdb]==0.8.*' httpx duckdb
 ```
 
-## Daily routine
+## Daily routine — visual overview
+
+```mermaid
+flowchart LR
+    M[🌅 Morning] --> S1[1 · Check status<br/>vision_status.py]
+    S1 --> S2[2 · Run rotation<br/>vision_daily_run.sh]
+    S2 -->|~60-90 min| S3{Quota cap hit?}
+    S3 -->|yes 429 storm| K[Script auto-stops]
+    S3 -->|done full| K
+    K --> S4[3 · Commit cache<br/>git add + commit + push]
+    S4 --> S5{Coverage 100%?}
+    S5 -->|no| W[💤 Wait for daily reset]
+    W -->|next day| M
+    S5 -->|yes| S6[4 · Materialise both tracks<br/>extract-callouts + materialize_all]
+    S6 --> DONE([✅ Submission-ready])
+
+    style M fill:#fef3c7,stroke:#d97706
+    style S2 fill:#dbeafe,stroke:#2563eb
+    style S6 fill:#dcfce7,stroke:#16a34a
+    style DONE fill:#bbf7d0,stroke:#16a34a
+```
 
 ### Step 1 — Check status
 

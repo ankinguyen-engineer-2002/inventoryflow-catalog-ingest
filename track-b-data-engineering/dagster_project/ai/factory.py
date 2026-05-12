@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .cached import CachedLLMProvider
 from .fallback_chain import FallbackChainProvider, Tier
+from .gemini_vision import GeminiVisionProvider
 from .groq_vision import GroqVisionProvider
 from .handoff import ClaudeCodeHandoffProvider
 from .mock import MockProvider
@@ -77,6 +78,12 @@ def _pick_upstream(name: str, handoff_dir: Path) -> ILLMProvider:
             model=os.environ.get(
                 "OPENROUTER_VISION_MODEL", "baidu/qianfan-ocr-fast:free"
             ),
+        )
+
+    if name == "gemini-vision":
+        return GeminiVisionProvider(
+            api_key=os.environ.get("GEMINI_API_KEY"),
+            model=os.environ.get("GEMINI_VISION_MODEL", "gemini-2.5-flash"),
         )
 
     if name == "fallback-chain":

@@ -111,53 +111,61 @@ Track A delivers all four. The implementation is detailed in subsequent sections
 
 Track A is organised as five horizontal planes. This is a generalisation of the architecture pattern adopted by production data platforms including Confluent Cloud and Databricks. Naming consistency simplifies reasoning about where new functionality belongs.
 
-```
-                       ┌─────────────────────────────────────────────────────┐
-                       │  Ingress                                            │
-                       │  • CLI: pnpm ingest:full <xlsx>                     │
-                       │  • HTTP: POST /runs (batch ingest)                  │
-                       │  • HTTP: POST /events/{inventory,pricing,order}     │
-                       │  • HTTP: GET  /healthz /readyz /metrics             │
-                       └─────────────────────────┬───────────────────────────┘
-                                                 │
-                       ┌─────────────────────────▼───────────────────────────┐
-                       │  Control Plane                                      │
-                       │  • Run registry (ingest_runs)                       │
-                       │  • Event registry (stream_events)                   │
-                       │  • Metadata-driven bindings (dealer_pattern_bindings)│
-                       │  • BullMQ scheduler with per-queue concurrency      │
-                       │  • Redis token-bucket rate limiter                  │
-                       │  • Multitenant plugin (x-dealer-id → req.dealerId)  │
-                       └─────┬───────────────────┬─────────────────┬─────────┘
-                             │                   │                 │
-              ┌──────────────▼──┐  ┌─────────────▼────────┐  ┌─────▼──────────┐
-              │ Data Plane       │  │ Intelligence Plane    │  │ Storage Plane  │
-              │ Batch workers    │  │ ILLMProvider          │  │ PostgreSQL 16  │
-              │ (concurrency 8): │  │  - mock               │  │   12 tables    │
-              │  parse-file      │  │  - cached (decorator) │  │   GIN JSONB    │
-              │  parse-sheet     │  │  - claude-code-handoff│  │   trigram name │
-              │  upload-image    │  │  - ollama             │  │                │
-              │  enrich-llm      │  │  - anthropic-batch    │  │ Cloudflare R2  │
-              │                  │  │  - gemini (stubbed)   │  │  (MinIO local) │
-              │ Stream workers   │  │                       │  │  SHA-256 keyed │
-              │ (concurrency 32):│  │ JSONL response cache  │  │                │
-              │  stream-inventory│  │ (committed to repo)   │  │ Redis 7        │
-              │  stream-pricing  │  │ Per-call audit log    │  │  Queue, pub/sub│
-              │  stream-order    │  │                       │  │                │
-              │                  │  │                       │  │                │
-              │ Dead-letter queue│  │                       │  │                │
-              └──────────┬───────┘  └──────────┬────────────┘  └────────┬──────┘
-                         │                     │                        │
-                         └─────────────────────┴────────────────────────┘
-                                               │
-                       ┌───────────────────────▼──────────────────────────────┐
-                       │  Observability Plane                                 │
-                       │  • Pino structured logs with run_id correlation      │
-                       │  • Prometheus /metrics endpoint                      │
-                       │  • OpenTelemetry tracing (one trace per run / event) │
-                       │  • ingest_audit table (every LLM call, cost, latency)│
-                       │  • Lineage: row → section → sheet → file → run       │
-                       └──────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph INGRESS["⓪ Ingress"]
+        CLI[CLI<br/>pnpm ingest:full · enrich · extract-callouts]
+        API[Fastify API<br/>POST /runs · POST /events/* · GET /healthz /metrics]
+    end
+
+    subgraph CONTROL["① Control Plane"]
+        RR[(ingest_runs<br/>run registry)]
+        ER[(stream_events<br/>event registry)]
+        MDCP[Metadata-driven bindings<br/>dealer_pattern_bindings]
+        QUE[BullMQ scheduler<br/>per-queue concurrency · token-bucket]
+        TEN[Multitenant plugin<br/>x-dealer-id → req.dealerId]
+    end
+
+    subgraph DATA["② Data Plane — workers"]
+        BATCH[Batch workers · concurrency 8<br/>parse-file · parse-sheet · upload-image · enrich-llm]
+        STREAM[Stream workers · concurrency 32<br/>stream-inventory · stream-pricing · stream-order]
+        DLQ[Dead-letter queue]
+    end
+
+    subgraph INTEL["③ Intelligence Plane — AI"]
+        PROV[ILLMProvider<br/>mock · cached · handoff · ollama · ollama-vision<br/>groq-vision · openrouter-vision · anthropic-batch]
+        CACHE[(shared/llm-cache.jsonl<br/>SHA-256 keyed, committed)]
+        AUDIT[(ingest_audit<br/>every call · cost · latency)]
+    end
+
+    subgraph STORE["④ Storage Plane"]
+        PG[(PostgreSQL 16<br/>12 tables · GIN JSONB · trigram name)]
+        R2[(Cloudflare R2 / MinIO<br/>SHA-256 keyed images)]
+        REDIS[(Redis 7<br/>queue · pub/sub · cache)]
+    end
+
+    subgraph OBS["⑤ Observability Plane"]
+        LOG[Pino structured logs<br/>run_id correlation]
+        METRIC[Prometheus /metrics]
+        TRACE[OpenTelemetry tracing<br/>1 trace per run / event]
+        LINE[Lineage<br/>row → section → sheet → file → run]
+    end
+
+    INGRESS --> CONTROL
+    CONTROL --> DATA
+    CONTROL --> INTEL
+    DATA --> STORE
+    INTEL --> STORE
+    INTEL -.cache lookup.-> CACHE
+    DATA --> OBS
+    INTEL --> OBS
+
+    style INGRESS fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e
+    style CONTROL fill:#fef3c7,stroke:#d97706,color:#78350f
+    style DATA fill:#dcfce7,stroke:#16a34a,color:#14532d
+    style INTEL fill:#fae8ff,stroke:#a21caf,color:#581c87
+    style STORE fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    style OBS fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
 ```
 
 ### 3.2 Component selection rationale
