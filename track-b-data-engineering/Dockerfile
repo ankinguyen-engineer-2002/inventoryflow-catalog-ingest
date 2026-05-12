@@ -41,6 +41,7 @@ FROM deps AS build
 WORKDIR /app
 
 COPY dagster_project ./dagster_project
+COPY parser ./parser
 COPY dbt ./dbt
 COPY streaming ./streaming
 
