@@ -1,246 +1,285 @@
-"""Track B medallion assets.
+"""Track B medallion assets — wired end-to-end with the real parser.
 
-Three asset layers (bronze, silver, gold) implementing the same data
-shape as Track A through the modern OSS DE stack. Each layer is a
-Dagster software-defined asset, which means:
+Three software-defined Dagster assets implementing the same data
+transformation Track A performs in TypeScript, but through the modern
+OSS lakehouse stack (Polars + Apache Iceberg + dbt-duckdb).
 
-  • Dependencies between layers are declared, not orchestrated by hand.
-  • Lineage is automatic and visible in the Dagster asset graph UI.
-  • Re-materialisation is partition-aware: changing a bronze partition
-    invalidates only the silver and gold partitions that depend on it.
-  • Asset checks (see asset_checks.py) gate materialisation atomically.
+  bronze_catalog_rows   — parser output landed as schemaless rows
+                          with provenance (dealer × sheet × row_index)
+  silver_parts          — typed, deduplicated parts table
+                          (UNIQUE part_number per dealer)
+  gold_products_mart    — denormalised mart with JSON fitment column
+                          matching Track A's products serving shape
 
-Compared to Track A's BullMQ worker pool, this representation is more
-declarative, but the runtime is heavier (Dagster webserver, daemon, etc.).
-The trade-off is appropriate at the scale Track B targets (500+ dealers).
+Each asset declares its dependency on the previous via Dagster's input
+mechanism. AutoMaterializePolicy lets Dagster refresh stale assets
+without explicit scheduling. Asset checks (see asset_checks.py) gate
+each transition.
+
+The parser logic lives in ../parser/ — the same modules the standalone
+scripts/parity_check.py and scripts/iceberg_roundtrip.py use. Track B's
+Dagster path and standalone script path share the same code so the
+99.97% parity proof carries over.
 """
 
+import json
+import sys
 from datetime import datetime
+from pathlib import Path
 
 import polars as pl
-from dagster import AssetIn, asset
+import pyarrow as pa
+from dagster import AssetIn, MetadataValue, Output, asset
 from pyiceberg.catalog import Catalog
+from pyiceberg.exceptions import NamespaceAlreadyExistsError, NoSuchTableError
+
+# Make the sibling `parser/` package importable when Dagster auto-loads
+# this module from various working directories.
+_PARSER_ROOT = Path(__file__).resolve().parent.parent
+if str(_PARSER_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PARSER_ROOT))
+
+from parser.parse_xlsx import FitmentEntry, ParsedProduct, parse_xlsx  # noqa: E402
 
 from .resources import IcebergCatalogResource, SourceXlsxResource
 
 NAMESPACE = "inventoryflow"
+DEMO_DEALER_ID = "7207c961-a7cc-46a7-9c5e-34b292a2cc68"
+
+
+def _ensure_namespace(catalog: Catalog, namespace: str) -> None:
+    try:
+        catalog.create_namespace(namespace)
+    except NamespaceAlreadyExistsError:
+        pass
+
+
+def _overwrite_table(catalog: Catalog, identifier: tuple[str, str], table: pa.Table) -> None:
+    """Create or overwrite an Iceberg table with the given Arrow data.
+
+    Idempotent: same input data → same output table. Track A achieves
+    idempotency via NULLS NOT DISTINCT unique indexes; Track B achieves
+    it through Iceberg's snapshot model + this overwrite operation.
+
+    If the existing table's schema differs from the new data, the table
+    is dropped and recreated. Schema-evolution-aware merge would be the
+    production path; for the PoC drop+recreate is acceptable since the
+    bronze/silver/gold contract is owned end-to-end by this asset graph.
+    """
+    try:
+        iceberg_table = catalog.load_table(identifier)
+        try:
+            iceberg_table.overwrite(table)
+        except ValueError as exc:
+            if "contains more columns" not in str(exc) and "schema" not in str(exc).lower():
+                raise
+            catalog.drop_table(identifier)
+            iceberg_table = catalog.create_table(identifier, schema=table.schema)
+            iceberg_table.append(table)
+    except NoSuchTableError:
+        iceberg_table = catalog.create_table(identifier, schema=table.schema)
+        iceberg_table.append(table)
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Bronze — raw landing zone. One row per Excel data row, schemaless safety.
+# Bronze — parser output landed verbatim with provenance.
 # ─────────────────────────────────────────────────────────────────────────
 @asset(
     name="bronze_catalog_rows",
     group_name="bronze",
-    description="Raw rows from the OEM xlsx, captured as schemaless JSONB. "
-    "Partitioned by dealer and ingestion date.",
+    description=(
+        "Raw parser output: one row per (sheet, source_row_index, part_number) "
+        "with full provenance. Idempotent — re-running with the same xlsx "
+        "overwrites the bronze table with identical content."
+    ),
     compute_kind="polars",
 )
 def bronze_catalog_rows(
     context,
     iceberg_catalog: IcebergCatalogResource,
     source_xlsx: SourceXlsxResource,
-) -> dict[str, int]:
-    """Reads the source xlsx, flattens every non-empty cell-row, and writes to
-    the Iceberg bronze table. Mirrors Track A's exceljs streaming behaviour.
-
-    Returns: row counts per source sheet for the Dagster materialization metadata.
+) -> Output[int]:
+    """Read the source xlsx through the ported parser and write every
+    extracted product (one row per appearance, before dedup) to the
+    Iceberg bronze table. Same parser code path as scripts/parity_check.py.
     """
-    catalog: Catalog = iceberg_catalog.load()
+    catalog = iceberg_catalog.load()
     _ensure_namespace(catalog, NAMESPACE)
 
-    sheets = pl.read_excel(
-        source_xlsx.path,
-        sheet_id=None,
-        engine="openpyxl",
-    )
+    products = parse_xlsx(source_xlsx.path)
+    context.log.info("Parser produced %d rows from %s", len(products), source_xlsx.path)
 
-    ingestion_date = datetime.utcnow().date().isoformat()
-    dealer_id = "7207c961-a7cc-46a7-9c5e-34b292a2cc68"  # demo dealer (Track A seed)
-
-    all_rows: list[dict[str, str]] = []
-    counts: dict[str, int] = {}
-
-    for sheet_name, df in sheets.items():
-        if df is None or df.is_empty():
-            continue
-        # Each sheet → list of row-level dicts captured verbatim as JSON.
-        for row in df.to_dicts():
-            non_empty = {k: v for k, v in row.items() if v is not None and str(v).strip()}
-            if not non_empty:
-                continue
-            all_rows.append(
-                {
-                    "_dealer_id": dealer_id,
-                    "_ingestion_date": ingestion_date,
-                    "_source_sheet": sheet_name.strip(),
-                    "_raw_json": str(non_empty),
-                }
-            )
-        counts[sheet_name.strip()] = len(df)
-
-    if not all_rows:
-        context.log.warning("No rows parsed; skipping Iceberg write")
-        return counts
-
-    out_df = pl.DataFrame(all_rows)
-    arrow_table = out_df.to_arrow()
-
-    table = _ensure_table(
-        catalog,
-        identifier=(NAMESPACE, "bronze_catalog_rows"),
-        schema=arrow_table.schema,
-    )
-    table.append(arrow_table)
-
-    context.add_output_metadata(
+    ingestion_at = datetime.utcnow().isoformat()
+    rows = [
         {
-            "sheets_processed": len(counts),
-            "rows_written": len(all_rows),
-            "dealer_id": dealer_id,
+            "_dealer_id": DEMO_DEALER_ID,
+            "_source_xlsx": source_xlsx.path,
+            "_ingested_at": ingestion_at,
+            "part_number": p.part_number,
+            "name_en": p.name_en or "",
+            "name_cn": p.name_cn or "",
+            "spec_cn": p.spec_cn or "",
+            "retail_price": float(p.retail_price) if p.retail_price is not None else 0.0,
+            "fitment_json": json.dumps(
+                [_fitment_dict(f) for f in p.fitment],
+                ensure_ascii=False,
+                separators=(", ", ": "),
+            ),
         }
+        for p in products
+    ]
+    arrow = pa.Table.from_pylist(rows)
+    _overwrite_table(catalog, (NAMESPACE, "bronze_catalog_rows"), arrow)
+
+    return Output(
+        value=len(rows),
+        metadata={
+            "row_count": len(rows),
+            "source_xlsx": MetadataValue.path(source_xlsx.path),
+            "iceberg_table": f"{NAMESPACE}.bronze_catalog_rows",
+        },
     )
-    return counts
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Silver — conformed parts catalog. Typed schema, validated.
+# Silver — typed conformed parts. Deduplicated by part_number.
 # ─────────────────────────────────────────────────────────────────────────
 @asset(
     name="silver_parts",
     group_name="silver",
-    description="Typed, deduplicated parts table derived from bronze. "
-    "Schema enforced; null part numbers rejected.",
+    description=(
+        "Conformed parts table. Last-row-wins dedup by (dealer, part_number) "
+        "mirrors Track A's PostgreSQL ON CONFLICT DO UPDATE semantics."
+    ),
     compute_kind="polars",
-    ins={"bronze_rows": AssetIn(key="bronze_catalog_rows")},
+    ins={"_bronze": AssetIn(key="bronze_catalog_rows")},
 )
 def silver_parts(
-    context,
-    bronze_rows: dict[str, int],
-    iceberg_catalog: IcebergCatalogResource,
-) -> int:
-    """Reads bronze, applies the same parsing logic Track A uses (header
-    detection, part-number normalisation), writes typed silver table.
+    context, _bronze: int, iceberg_catalog: IcebergCatalogResource
+) -> Output[int]:
+    """Read bronze, dedupe last-row-wins by part_number, write silver.
 
-    This is a thin demonstration; production implementation reuses the
-    Track A section detector via a Python port or subprocess call.
+    The bronze table carries the same `fitment_json` shape Track A's
+    products table stores. Silver only normalises types and dedupes.
     """
-    catalog: Catalog = iceberg_catalog.load()
-
-    # Read bronze via pyiceberg scan, project the raw_json column.
+    catalog = iceberg_catalog.load()
     bronze = catalog.load_table((NAMESPACE, "bronze_catalog_rows"))
-    bronze_pa = bronze.scan().to_arrow()
-    bronze_df = pl.from_arrow(bronze_pa)
+    df = pl.from_arrow(bronze.scan().to_arrow())
+    if isinstance(df, pl.Series):
+        df = df.to_frame()
 
-    if isinstance(bronze_df, pl.Series):
-        bronze_df = bronze_df.to_frame()
+    # Last-row-wins dedup (matches Track A's ON CONFLICT semantics).
+    deduped = df.unique(subset=["_dealer_id", "part_number"], keep="last")
 
-    # Demonstration: parse raw_json string, extract part_number-like values.
-    # Real implementation would invoke the section detector and normaliser.
-    parsed = bronze_df.with_columns(
-        [
-            pl.col("_raw_json")
-            .str.extract(r"'(\d{6}-\d{4}[A-Z0-9-]*)'", 1)
-            .alias("part_number"),
-            pl.col("_raw_json")
-            .str.extract(r"'EN name'?:\s*'([^']+)'", 1)
-            .alias("name_en"),
-        ]
-    ).filter(pl.col("part_number").is_not_null())
-
-    if parsed.is_empty():
-        context.log.warning("No parts extracted; silver layer is empty")
-        return 0
-
-    arrow_table = parsed.select(
+    silver_arrow = deduped.select(
         [
             "_dealer_id",
-            "_source_sheet",
             "part_number",
             "name_en",
+            "name_cn",
+            "spec_cn",
+            "retail_price",
+            "_ingested_at",
         ]
     ).to_arrow()
 
-    table = _ensure_table(
-        catalog,
-        identifier=(NAMESPACE, "silver_parts"),
-        schema=arrow_table.schema,
-    )
-    table.overwrite(arrow_table)
+    _overwrite_table(catalog, (NAMESPACE, "silver_parts"), silver_arrow)
 
-    rows = parsed.shape[0]
-    context.add_output_metadata({"rows_written": rows})
-    return rows
+    return Output(
+        value=deduped.height,
+        metadata={
+            "row_count": deduped.height,
+            "bronze_rows": _bronze,
+            "dedup_ratio": round(deduped.height / max(_bronze, 1), 4),
+            "iceberg_table": f"{NAMESPACE}.silver_parts",
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Gold — business mart. Denormalised products with JSONB fitment shape.
+# Gold — business mart with JSON fitment column.
 # ─────────────────────────────────────────────────────────────────────────
 @asset(
     name="gold_products_mart",
     group_name="gold",
-    description="Denormalised products table matching the Track A serving "
-    "schema. Synced to PostgreSQL serving layer.",
+    description=(
+        "Denormalised products mart matching Track A's serving schema. "
+        "Joins silver_parts with the bronze fitment_json column to produce "
+        "the wire format downstream consumers (marketplace sync, catalog "
+        "API) expect."
+    ),
     compute_kind="dbt",
-    ins={"silver_count": AssetIn(key="silver_parts")},
+    ins={"_silver_count": AssetIn(key="silver_parts")},
 )
 def gold_products_mart(
-    context,
-    silver_count: int,
-    iceberg_catalog: IcebergCatalogResource,
-) -> int:
-    """In a full implementation this would invoke `dbt run --select gold`
-    against the Iceberg-on-DuckDB adapter. For the PoC we emit a pass-
-    through from silver with the fitment array shape that the Track A
-    Fastify API expects.
+    context, _silver_count: int, iceberg_catalog: IcebergCatalogResource
+) -> Output[int]:
+    """Join silver with bronze fitment to produce the final gold mart.
+
+    This is the table Track A's catalog API would read from when Track B
+    is the serving layer of record. Same shape as
+    sample-output/data/products-full.csv.
     """
-    catalog: Catalog = iceberg_catalog.load()
-    silver = catalog.load_table((NAMESPACE, "silver_parts"))
-    silver_df = pl.from_arrow(silver.scan().to_arrow())
+    catalog = iceberg_catalog.load()
 
-    if isinstance(silver_df, pl.Series):
-        silver_df = silver_df.to_frame()
-
-    if silver_df.is_empty():
-        context.log.warning("Silver empty; gold materialization skipped")
-        return 0
-
-    # Add the JSONB fitment-shaped column expected by downstream consumers.
-    gold = silver_df.with_columns(
-        pl.lit('[{"make":"Kayo","model":"Demo","year":2024}]').alias("fitment")
+    silver = pl.from_arrow(
+        catalog.load_table((NAMESPACE, "silver_parts")).scan().to_arrow()
+    )
+    bronze = pl.from_arrow(
+        catalog.load_table((NAMESPACE, "bronze_catalog_rows")).scan().to_arrow()
     )
 
-    arrow_table = gold.to_arrow()
-    table = _ensure_table(
-        catalog,
-        identifier=(NAMESPACE, "gold_products_mart"),
-        schema=arrow_table.schema,
+    if isinstance(silver, pl.Series):
+        silver = silver.to_frame()
+    if isinstance(bronze, pl.Series):
+        bronze = bronze.to_frame()
+
+    # Pick the fitment_json from bronze for each (dealer, part_number).
+    fitment = (
+        bronze.select(["_dealer_id", "part_number", "fitment_json"])
+        .unique(subset=["_dealer_id", "part_number"], keep="last")
     )
-    table.overwrite(arrow_table)
 
-    rows = gold.shape[0]
-    context.add_output_metadata(
-        {
-            "rows_written": rows,
-            "synced_to_postgres": False,  # set true when dbt-postgres bridge wired
-        }
+    gold = silver.join(
+        fitment, on=["_dealer_id", "part_number"], how="left"
+    ).rename({"fitment_json": "fitment"})
+
+    gold_arrow = gold.select(
+        [
+            "_dealer_id",
+            "part_number",
+            "name_en",
+            "name_cn",
+            "spec_cn",
+            "retail_price",
+            "fitment",
+            "_ingested_at",
+        ]
+    ).to_arrow()
+
+    _overwrite_table(catalog, (NAMESPACE, "gold_products_mart"), gold_arrow)
+
+    return Output(
+        value=gold.height,
+        metadata={
+            "row_count": gold.height,
+            "parity_target_track_a": 3938,
+            "iceberg_table": f"{NAMESPACE}.gold_products_mart",
+            "snapshot_id_hint": MetadataValue.text(
+                "Use Iceberg time travel: SELECT * ... FOR TIMESTAMP AS OF ..."
+            ),
+        },
     )
-    return rows
 
 
-# ─────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────
-def _ensure_namespace(catalog: Catalog, namespace: str) -> None:
-    try:
-        catalog.create_namespace(namespace)
-    except Exception:
-        # Namespace already exists; pyiceberg's exception types vary by backend.
-        pass
-
-
-def _ensure_table(catalog: Catalog, identifier: tuple[str, str], schema: object) -> object:
-    try:
-        return catalog.load_table(identifier)
-    except Exception:
-        return catalog.create_table(identifier, schema=schema)
+def _fitment_dict(f: FitmentEntry) -> dict:
+    return {
+        "make": f.make,
+        "year": f.year,
+        "model": f.model,
+        "section": f.section,
+        "variant": f.variant,
+        "callout_no": f.callout_no,
+        "confidence": f.confidence,
+        "model_code": f.model_code,
+    }
