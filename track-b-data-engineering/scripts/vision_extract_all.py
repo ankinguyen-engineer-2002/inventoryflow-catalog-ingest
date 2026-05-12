@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dagster_project.ai.cached import CachedLLMProvider  # noqa: E402
 from dagster_project.ai.groq_vision import GroqVisionProvider  # noqa: E402
 from dagster_project.ai.ollama_vision import OllamaVisionProvider  # noqa: E402
+from dagster_project.ai.openrouter_vision import OpenRouterVisionProvider  # noqa: E402
 from dagster_project.ai.provider import EnrichmentRequest  # noqa: E402
 from parser.image_extractor import extract_unique_images  # noqa: E402
 
@@ -90,7 +91,7 @@ async def main_async(argv: list[str] | None = None) -> int:
                         help="Skip images smaller than this (likely icons)")
     parser.add_argument(
         "--provider",
-        choices=["ollama", "groq"],
+        choices=["ollama", "groq", "openrouter"],
         default="ollama",
         help="Which vision upstream to use",
     )
@@ -117,6 +118,8 @@ async def main_async(argv: list[str] | None = None) -> int:
 
     if args.provider == "groq":
         upstream = GroqVisionProvider(min_interval_s=args.min_interval_s)
+    elif args.provider == "openrouter":
+        upstream = OpenRouterVisionProvider(min_interval_s=args.min_interval_s)
     else:
         upstream = OllamaVisionProvider()
     log.info("Using upstream: %s", upstream.name)
