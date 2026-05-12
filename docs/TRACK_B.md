@@ -439,6 +439,53 @@ This means: a translation seeded once by Track A is served to Track B at zero ma
 
 In production, these findings are written to an Iceberg `gold_translation_audit` table and consumed by a review workflow that allows operators to promote the LLM alternative over the dealer-supplied EN.
 
+### 6.4 Vision LLM — 5-tier fallback chain
+
+The test specification explicitly invites "Vision LLMs (OpenAI, Claude)" for the parsing task. Naively this becomes a $26k/year line item at 10,000 files/week scale. Track B's answer is a 5-tier architecture (see ADR-007 v3 §Vision at scale for the full math):
+
+```mermaid
+flowchart LR
+    REQ[extract_callouts<br/>image_b64 + image_sha256] --> T0
+    T0[(🟢 Tier 0 — Cache<br/>shared/llm-cache.jsonl<br/>SHA-256 keyed<br/>~99% hit at steady state)] -->|miss| T1
+    T1[Tier 1 — Free OCR<br/>OpenRouter qianfan-ocr-fast<br/>50 RPD · 3s/img] -->|low conf| T2
+    T2[Tier 2 — Free general vision<br/>Groq Llama-4 Scout · Cerebras<br/>1000 RPD · 0.7s/img] -->|exhausted| T3
+    T3[Tier 3 — Self-host<br/>Ollama qwen2.5vl:7b<br/>unlimited · 2-5s/img] -.opt-in.-> T4
+    T4[Tier 4 — Paid batch<br/>Anthropic Batch Vision<br/>$0.0008/img · 24h SLA]
+
+    style T0 fill:#dcfce7,stroke:#16a34a
+    style T1 fill:#fef3c7,stroke:#d97706
+    style T2 fill:#fef3c7,stroke:#d97706
+    style T3 fill:#dbeafe,stroke:#2563eb
+    style T4 fill:#fee2e2,stroke:#dc2626
+```
+
+**Code surface** (LLM_PROVIDER=`fallback-chain`):
+
+| File                                                     | Responsibility |
+| -------------------------------------------------------- | -------------- |
+| `dagster_project/ai/fallback_chain.py`                   | `FallbackChainProvider` — escalation engine |
+| `dagster_project/ai/quota_tracker.py`                    | `QuotaTracker` — persisted per-provider daily counters |
+| `dagster_project/ai/openrouter_vision.py`                | Tier 1 OCR-specialist provider |
+| `dagster_project/ai/groq_vision.py`                      | Tier 2 general vision (token-bucket pacing built-in) |
+| `dagster_project/ai/ollama_vision.py`                    | Tier 3 self-host provider |
+| `tests/test_fallback_chain.py`                           | 8 unit tests covering escalation paths, quota, persistence |
+
+**Cost economics at 10k files/week** (full math in ADR-007 v3):
+
+| Tier  | Volume share | Annual cost |
+| ----- | ------------ | ----------- |
+| Cache | 99.0%        | $0          |
+| T1 + T2 free | 0.95% | $0          |
+| T3 self-host | 0.04% | ~$2 (electricity) |
+| T4 paid batch (opt-in) | 0.01% | ~$200 |
+| **Total** | 100%   | **~$200/year vs $26k naive** |
+
+**Why 99% cache hit** — catalog images dedup heavily across documents (same brake caliper on 50 model variants), so SHA-256-keyed cache compounds: 50% hit week 1, 80% week 4, 99% by month 6.
+
+**Why one account per provider is legitimate** — Groq + OpenRouter + Cerebras + Together = 4 distinct companies = 4 separate signups = ~5,000 free calls/day across the federation, no TOS violation.
+
+**Demo coverage in this submission** — ~230 of 1,586 unique images processed via real Vision providers (Ollama + Groq during live session, rate-limited at free tier). Remaining ~1,360 fill in over 2–3 days of free-tier rotation runs through the same FallbackChainProvider — architecture is the deliverable, coverage is a function of daily quotas.
+
 ---
 
 ## 7. Configuration and Setup

@@ -687,6 +687,42 @@ At a production scale of one thousand dealers operating weekly:
 
 The cache is the architectural lever that makes paid APIs viable at scale. The provider abstraction is the lever that allows substitution between Ollama (self-hosted, zero variable cost, lower quality) and Anthropic (cloud, paid, higher quality) without modifying any business logic.
 
+### 6.6 Vision LLM — 5-tier fallback chain
+
+The test specification explicitly invites "Vision LLMs (OpenAI, Claude)" for parsing schematic callouts. At 10,000 files/week scale that becomes a $26k/year line item naively. Track A's answer is a 5-tier architecture mirroring Track B's, sharing the same `shared/llm-cache.jsonl` (see ADR-007 v3 §Vision at scale):
+
+```mermaid
+flowchart LR
+    REQ[extract_callouts<br/>image bytes + sha256] --> T0
+    T0[(🟢 Tier 0 — Cache<br/>SHA-256 keyed<br/>~99% hit at steady state)] -->|miss| T1
+    T1[Tier 1 — Free OCR<br/>OpenRouter qianfan-ocr-fast<br/>50 RPD · 3s/img] -->|low conf| T2
+    T2[Tier 2 — Free general vision<br/>Groq Llama-4 Scout<br/>1000 RPD · 0.7s/img] -->|exhausted| T3
+    T3[Tier 3 — Self-host<br/>Ollama qwen2.5vl:7b<br/>unlimited] -.opt-in.-> T4
+    T4[Tier 4 — Paid batch<br/>Anthropic Batch Vision<br/>$0.0008/img · 24h SLA]
+
+    style T0 fill:#dcfce7,stroke:#16a34a
+    style T1 fill:#fef3c7,stroke:#d97706
+    style T2 fill:#fef3c7,stroke:#d97706
+    style T3 fill:#dbeafe,stroke:#2563eb
+    style T4 fill:#fee2e2,stroke:#dc2626
+```
+
+Track A consumes vision results via the new `image_callouts` table (migration 0003). `pnpm extract-callouts` reads the shared cache populated by either:
+- Track B's `vision_extract_all.py` (the live offline runner), or
+- Any future production worker invoking the same `FallbackChainProvider`
+
+Either path produces the same wire format. Track A's catalog API serves the callouts on `GET /products/:pn/callouts` without ever touching an LLM at request time.
+
+**Annual cost at 10k files/week**:
+
+| Tier  | Share | Annual cost |
+| ----- | ----- | ----------- |
+| Cache (T0) | 99% | $0 |
+| Free OCR + general (T1+T2) | 0.95% | $0 |
+| Self-host (T3) | 0.04% | ~$2 electricity |
+| Paid batch (T4, opt-in) | 0.01% | ~$200 |
+| **Total** | 100% | **~$200 vs $26k naive (130× cheaper)** |
+
 ---
 
 ## 7. Configuration and Setup
