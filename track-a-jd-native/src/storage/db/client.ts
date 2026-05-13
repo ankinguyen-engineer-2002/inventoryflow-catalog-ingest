@@ -20,6 +20,15 @@ const client = postgres(env.DATABASE_URL, {
 
 export const db: PostgresJsDatabase<typeof schema> = drizzle(client, { schema });
 
+/**
+ * Type for either the singleton `db` client OR a transaction handle
+ * obtained via `db.transaction(async (tx) => ...)`. Use this in
+ * repository function signatures that should accept a tx so callers
+ * can compose atomic batches without the repo silently dropping out
+ * of the transaction.
+ */
+export type DbClient = PostgresJsDatabase<typeof schema> | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export async function closeDb(): Promise<void> {
   await client.end({ timeout: 5 });
 }

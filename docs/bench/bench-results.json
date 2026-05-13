@@ -1,27 +1,27 @@
 {
   "hardware": "darwin arm64",
-  "node_version": "v25.2.1",
-  "timestamp": "2026-05-11T12:21:38.641Z",
+  "node_version": "v22.22.2",
+  "timestamp": "2026-05-13T13:43:11.905Z",
   "fitment_query": {
-    "iterations": 500,
-    "p50_ms": 0.6,
-    "p95_ms": 0.87,
-    "p99_ms": 1.02,
-    "max_ms": 1.32
+    "iterations": 1000,
+    "p50_ms": 0.61,
+    "p95_ms": 0.83,
+    "p99_ms": 0.99,
+    "max_ms": 2.12
   },
   "table_counts": {
     "products": 3938,
-    "product_images": 10524,
+    "product_images": 10906,
     "part_number_aliases": 50,
-    "vehicle_models": 35,
-    "reference_specs": 371,
-    "ingest_audit": 276,
-    "ingest_runs": 11,
+    "vehicle_models": 65,
+    "reference_specs": 742,
+    "ingest_audit": 336,
+    "ingest_runs": 13,
     "stream_events": 11,
     "stream_outbox": 11,
-    "dealers": 1,
+    "dealers": 2,
     "ingestion_patterns": 3,
-    "dealer_pattern_bindings": 3
+    "dealer_pattern_bindings": 6
   },
-  "jsonb_index_size_kb": 2128
+  "jsonb_index_size_kb": 760
 }

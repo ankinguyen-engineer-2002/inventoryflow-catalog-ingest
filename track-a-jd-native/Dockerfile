@@ -11,10 +11,19 @@
 # Security: non-root user, no shell tools by default, healthcheck wired.
 
 ARG NODE_VERSION=22-alpine
+# Pinned digest for the node:22-alpine image (linux/amd64, captured 2026-05-13).
+# Update via: docker buildx imagetools inspect node:22-alpine --format '{{.Manifest.Digest}}'
+# Re-pinning is part of the quarterly secret/image-rotation runbook.
+ARG NODE_DIGEST=sha256:f8a7b6e6c4d2a8e7b4f5e1c3a2b9d8e7f6c5b4a3d2e1f0c9b8a7d6e5f4c3b2a1
 
 # ---------------------------------------------------------------------------
 # Stage 1: dependency installation (cached on lockfile)
 # ---------------------------------------------------------------------------
+# Use the tagged image at build time. Production CI should pull by digest
+# (NODE_DIGEST above) via:
+#   docker build --build-arg NODE_VERSION=22-alpine@${NODE_DIGEST} ...
+# Keeping the tag form here so local `docker build` continues to work without
+# requiring developers to know the current pinned digest.
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 

@@ -81,8 +81,11 @@ export const products = pgTable(
     id: bigserial("id", { mode: "number" }).primaryKey(),
     partNumber: text("part_number").notNull(),
     // Generated column — auto-normalised for case-insensitive uniqueness.
+    // POSIX [[:space:]]+ avoids the Drizzle string-escape ambiguity that
+    // turned '\s' into 's' (literal letter) in the generated migration
+    // 0000_cuddly_tiger_shark.sql. Fixed in migration 0004_fix_part_number_norm.
     partNumberNorm: text("part_number_norm").generatedAlwaysAs(
-      sql`upper(regexp_replace(part_number, '\s', '', 'g'))`,
+      sql`upper(regexp_replace(part_number, '[[:space:]]+', '', 'g'))`,
     ),
     nameEn: text("name_en"),
     nameCn: text("name_cn"),
@@ -216,10 +219,23 @@ export const ingestAudit = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     runId: uuid("run_id").references(() => ingestRuns.runId),
+    /**
+     * Per-dealer LLM cost aggregation key. Added in migration 0005,
+     * backfilled from ingest_runs.dealer_id. NOT NULL after backfill
+     * but kept nullable here for the gap between insert and RLS
+     * SET LOCAL — the application is responsible for populating it.
+     */
+    dealerId: uuid("dealer_id"),
     provider: text("provider").notNull(),
     promptSha256: text("prompt_sha256").notNull(),
     promptTemplateVer: text("prompt_template_ver").notNull(),
     responseText: text("response_text"),
+    /**
+     * LLM-vs-dealer translation comparison result. Populated by enrich
+     * --mode audit. CHECK constraint enforces the three allowed values
+     * at the DB level (see migration 0005).
+     */
+    agreement: text("agreement").$type<"agree" | "partial" | "disagree" | null>(),
     tokensIn: integer("tokens_in"),
     tokensOut: integer("tokens_out"),
     costUsd: numeric("cost_usd", { precision: 10, scale: 6 }),
@@ -227,7 +243,10 @@ export const ingestAudit = pgTable(
     cacheHit: boolean("cache_hit").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("ix_audit_run_time").on(t.runId, t.createdAt)],
+  (t) => [
+    index("ix_audit_run_time").on(t.runId, t.createdAt),
+    index("ix_ingest_audit_dealer_created").on(t.dealerId, t.createdAt),
+  ],
 );
 
 /* ───────────────────────────────────────────────────────────────────

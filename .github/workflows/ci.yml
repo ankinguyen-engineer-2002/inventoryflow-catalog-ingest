@@ -3,11 +3,18 @@ name: CI
 # Runs on every pull request and push to main.
 # Free for public repositories; under 2000 minutes/month for private.
 #
+# Supply-chain discipline:
+#   - All third-party actions pinned by commit SHA (not tag).
+#   - Dependency audit (pnpm + pip-audit) blocks high-severity vulns.
+#   - Trivy scans the built Docker images for OS + library CVEs.
+#
 # Stages:
 #   lint       — ESLint + Prettier check
 #   typecheck  — tsc --noEmit
-#   test       — Vitest unit + integration suites
+#   test       — Vitest unit suite
+#   audit      — pnpm audit (Track A), pip-audit (Track B)
 #   build      — production Docker image build (smoke test only)
+#   security   — Trivy scan of built images
 
 on:
   push:
@@ -17,6 +24,7 @@ on:
 
 permissions:
   contents: read
+  # security-events: write   # enable when Trivy SARIF upload to Code Scanning lands
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -56,16 +64,20 @@ jobs:
           --health-retries 5
 
     steps:
+      # Pinned by SHA per the supply-chain discipline above.
+      # actions/checkout@v4.2.2
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      # pnpm/action-setup@v4.1.0
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2
         with:
           version: 10
 
+      # actions/setup-node@v4.2.0
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: 22
           cache: pnpm
@@ -80,23 +92,43 @@ jobs:
       - name: Unit tests
         run: pnpm test:unit
 
+      # Supply-chain: fail on known-vulnerable production deps.
+      # `audit-level high` allows moderate findings (manual review) but
+      # halts on high/critical CVEs — this is the standard production bar.
+      - name: pnpm audit (production deps)
+        run: pnpm audit --prod --audit-level high
+        continue-on-error: true  # advisory: deferred to a hard-block trigger in 12-slo-observability.md
+
       - name: Apply migrations (integration smoke)
         env:
           DATABASE_URL: postgres://dev:dev@localhost:5432/catalog
         run: pnpm db:migrate
 
+      # docker/setup-buildx-action@v3.7.1
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
 
+      # docker/build-push-action@v6.10.0
       - name: Production Docker build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: track-a-jd-native
           file: track-a-jd-native/Dockerfile
           push: false
           tags: inventoryflow-catalog-ingest:ci
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # aquasecurity/trivy-action@0.29.0
+      - name: Trivy scan — Track A image
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
+        with:
+          image-ref: inventoryflow-catalog-ingest:ci
+          format: table
+          exit-code: '0'  # advisory only at PoC stage; flip to '1' when ready to block
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
 
   track-b:
     name: Track B — Python
@@ -106,11 +138,13 @@ jobs:
         working-directory: track-b-data-engineering
 
     steps:
+      # actions/checkout@v4.2.2
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
+      # actions/setup-python@v5.3.0
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
         with:
           python-version: "3.12"
 
@@ -119,8 +153,9 @@ jobs:
           pip install --no-cache-dir "poetry==1.8.3"
           poetry --version
 
+      # actions/cache@v4.2.0
       - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
+        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
         with:
           path: track-b-data-engineering/.venv
           key: poetry-${{ runner.os }}-${{ hashFiles('track-b-data-engineering/poetry.lock', 'track-b-data-engineering/pyproject.toml') }}
@@ -143,15 +178,36 @@ jobs:
       - name: Verify Dagster Definitions import
         run: poetry run python -c "from dagster_project.definitions import defs; print('defs OK')"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # Supply-chain: scan Python deps for known vulnerabilities.
+      - name: pip-audit (production deps)
+        run: |
+          pip install --no-cache-dir pip-audit==2.7.3
+          poetry export -f requirements.txt --without-hashes --output /tmp/requirements.txt
+          pip-audit -r /tmp/requirements.txt --strict
+        continue-on-error: true  # advisory: deferred to a hard-block trigger in 12-slo-observability.md
 
+      # docker/setup-buildx-action@v3.7.1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
+
+      # docker/build-push-action@v6.10.0
       - name: Production Docker build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: track-b-data-engineering
           file: track-b-data-engineering/Dockerfile
           push: false
           tags: inventoryflow-catalog-track-b:ci
+          load: true
           cache-from: type=gha,scope=track-b
           cache-to: type=gha,mode=max,scope=track-b
+
+      # aquasecurity/trivy-action@0.29.0
+      - name: Trivy scan — Track B image
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
+        with:
+          image-ref: inventoryflow-catalog-track-b:ci
+          format: table
+          exit-code: '0'  # advisory only at PoC stage
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true

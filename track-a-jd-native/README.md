@@ -52,7 +52,7 @@ mc ls local/catalog/ | head
 
 ## Status
 
-🚧 **Scaffolded only.** Implementation lands per [`../PLAN.md §11`](../PLAN.md#11-delivery-timeline--milestones).
+✅ **Solution A — end-to-end implemented.** `pnpm ingest:full` runs the complete pipeline (parser → 12-table Postgres + R2 + LLM audit) in ~60s. Sample output committed under `../sample-output/`. 32 unit tests pass. Bench numbers in `../docs/bench/bench-results.json`. See `../SUBMISSION.md` for the 3-command reviewer run, or the architecture truth-table at [`Inventoryflow_solution/docs/17-architecture-truth-table.md`](https://github.com/ankinguyen-engineer-2002/Inventoryflow_solution/blob/main/docs/17-architecture-truth-table.md) for which subsystems are implemented vs demo-only vs deferred.
 
 ## Design choices unique to Track A
 

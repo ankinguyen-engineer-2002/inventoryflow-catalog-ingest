@@ -29,6 +29,27 @@
       "when": 1778486200000,
       "tag": "0003_image_callouts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778486300000,
+      "tag": "0004_fix_part_number_norm",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778486400000,
+      "tag": "0005_ingest_audit_dealer_agreement",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778486500000,
+      "tag": "0006_rls_ingest_audit_and_null_fix",
+      "breakpoints": true
     }
   ]
 }
