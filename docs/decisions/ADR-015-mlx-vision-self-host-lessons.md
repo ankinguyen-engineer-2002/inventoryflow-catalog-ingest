@@ -96,13 +96,18 @@ This ADR records the answers I measured.
 | Qwen2.5-VL-7B-Instruct-8bit | ~9 GB | 5–16 s | 21–36 s (contention) | ~10% | 2–3 (RAM) |
 | Qwen2-VL-2B-Instruct-4bit | ~1.5 GB | 2.4 s | 3–4 s | ~9% (hallucination on dense) | 5 (GPU watchdog) |
 
-### Hybrid pipeline (measured on actual catalog)
+### Pipeline ACTUAL execution (updated 2026-05-14)
 
-| Phase | Model | Workers | Images | Wall-clock | Failure |
+The hybrid 2B→7B fallback plan above was **abandoned mid-run** after measurement showed 2B undercounted callouts by ~37% on dense schematics (verified against 7B output on overlapping 40-image sample). Switched to **7B-only Phase 1** with anti-loop Phase 2 retry. Final pipeline:
+
+| Phase | Model | Workers | Images | Wall-clock | JSON parse rate |
 |---|---|---|---|---|---|
-| 1 | Qwen2-VL-2B | 5 | 1,573 (all) | ~25 min | ~150 fail |
-| 2 | Qwen2.5-VL-7B | 3 | ~150 (Phase 1 fails) | ~10 min | ~0 |
-| **Total** | hybrid | mixed | 1,573 | **~35 min** | **~0 fail** |
+| 1 | Qwen2.5-VL-7B-Instruct-8bit | 3 (parallel) | 1,573 (all) | ~4-5 h | 1463 OK (93.0%) |
+| 2 | Qwen2.5-VL-7B-Instruct-8bit (anti-loop config) | 1 | 110 (Phase 1 fails) | ~26 min | 39 OK (35.5% recovery) |
+| 3a | Phase 3 verify (pure Python Layer 3) | — | 1573 | <1 min | — |
+| **Total** | 7B-only with anti-loop retry | mixed | 1,573 | **~4.5-5.5 h** | **1502 / 1573 = 95.5% with valid JSON** |
+
+**The 2B model was rejected** because content quality (callout count recall) was worse than 7B even though JSON parse rate was similar. Lesson: JSON validity ≠ content correctness. Phase 3a Layer 3 check then revealed 264 of the Phase 1 "OK" records had `duplicate_n` hallucination patterns — moving them from HIGH to MEDIUM confidence. Final ship-able quality: 91.6% HIGH+MEDIUM.
 
 ### Thermal + power envelope (M1 Max, live via `macmon`)
 

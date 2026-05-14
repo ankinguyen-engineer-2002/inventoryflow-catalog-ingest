@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.resized.*
+.python-version
+
+# Extracted images from xlsx — 377 MB, regenerable via extract_xlsx_images.py
+extracted_images/
+
+# Worker / phase logs (regenerable, large)
+*.log
