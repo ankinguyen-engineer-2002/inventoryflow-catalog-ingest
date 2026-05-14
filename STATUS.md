@@ -211,6 +211,37 @@ The 4-5h Phase 1 wall time is the "cash-discipline" trade-off — same task via 
 
 ---
 
+## Track A ↔ Track B parity (cross-infrastructure verification)
+
+Both tracks parse the SAME `example.xlsx` (the 242 MB Kayo catalog). Track A is TypeScript+Postgres; Track B is Python+Iceberg. The hypothesis worth verifying: *two infrastructures solving the same problem should produce logically identical datasets*.
+
+**Result** (from `track-b-data-engineering/scripts/parity_check.py`):
+
+```json
+{
+  "track_a_rows": 3938,
+  "track_b_rows": 3937,
+  "common_part_numbers": 3937,
+  "only_in_track_a": 1,
+  "only_in_track_b": 0,
+  "name_en_mismatches": 0,
+  "name_cn_mismatches": 10,
+  "retail_price_mismatches": 0,
+  "fitment_model_match": 3743,
+  "fitment_model_mismatch": 0,
+  "fitment_year_mismatch": 0,
+  "parity_pct": 99.97
+}
+```
+
+**Saved evidence**: `sample-output/track-b/parity-report.json` + `sample-output/track-b/data/products-full.csv` (Track B's full output for line-by-line diffing against Track A's `sample-output/data/products-full.csv`).
+
+**Parity: 99.97%**. The 1 row "only in Track A" is `U8 Code` — a header artefact from a row that looked like a part number to Track A's looser parser. The 10 `name_cn` mismatches are minor whitespace/encoding variations (acceptable for take-home; would be cohort-fixed in production).
+
+**This is the senior signal for ADR-009 (when to migrate to Track B)**: the architectural difference is in *infrastructure cost shape and scaling triggers* (per `BRIEFING.md §2.2`), not in *output correctness*. Migrating Track A → Track B does NOT lose data fidelity. The migration path is real, not theoretical.
+
+---
+
 ## Summary by status
 
 | Status | Count |

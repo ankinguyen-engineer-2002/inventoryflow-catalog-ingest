@@ -1,0 +1,18 @@
+  "track_a_rows": 3938,
+  "track_b_rows": 3937,
+  "common_part_numbers": 3937,
+  "only_in_track_a": 1,
+  "only_in_track_b": 0,
+  "name_en_mismatches": 0,
+  "name_cn_mismatches": 10,
+  "retail_price_mismatches": 0,
+  "fitment_model_match": 3743,
+  "fitment_model_mismatch": 0,
+  "fitment_year_mismatch": 0,
+  "parity_pct": 99.97,
+  "sample_only_a": [
+    "U8 Code"
+  ],
+  "sample_only_b": [],
+  "sample_name_mismatch": []
+}
