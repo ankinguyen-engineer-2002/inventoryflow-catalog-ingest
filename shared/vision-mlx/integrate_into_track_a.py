@@ -38,8 +38,21 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_DIR = REPO_ROOT / "shared"
-FINAL_INPUT = SHARED_DIR / "mlx-vision-output-final.jsonl"
+# Prefer Phase 4 output (with precision-aware confidence) over Phase 3a
+FINAL_INPUT_WITH_COVERAGE = SHARED_DIR / "mlx-vision-output-final-with-coverage.jsonl"
+FINAL_INPUT_PHASE3 = SHARED_DIR / "mlx-vision-output-final.jsonl"
 MANIFEST_CSV = Path(__file__).resolve().parent / "extracted_images" / "manifest.csv"
+
+
+def get_input_file() -> Path:
+    """Prefer Phase 4 (precision-aware) over Phase 3a if available."""
+    if FINAL_INPUT_WITH_COVERAGE.exists():
+        print(f"[integrate] using Phase 4 output (precision-aware confidence)")
+        return FINAL_INPUT_WITH_COVERAGE
+    if FINAL_INPUT_PHASE3.exists():
+        print(f"[integrate] using Phase 3a output (Layer 3 only — run phase4_coverage.py for full)")
+        return FINAL_INPUT_PHASE3
+    return Path()
 
 
 def load_sheet_mapping() -> dict[str, list[str]]:
@@ -75,16 +88,17 @@ def main() -> int:
                     help="Print what would be upserted, don't connect to DB")
     args = ap.parse_args()
 
-    if not FINAL_INPUT.exists():
-        print(f"[integrate] ERROR: {FINAL_INPUT} not found. Run phase3_verify.py first.")
+    final_input = get_input_file()
+    if not final_input.exists():
+        print(f"[integrate] ERROR: no input file found. Run phase3_verify.py first.")
         return 1
 
     sheet_mapping = load_sheet_mapping()
 
     records: list[dict] = []
-    for line in FINAL_INPUT.read_text().splitlines():
+    for line in final_input.read_text().splitlines():
         records.append(json.loads(line))
-    print(f"[integrate] loaded {len(records)} final records from phase3_verify")
+    print(f"[integrate] loaded {len(records)} records from {final_input.name}")
 
     # Build upsert rows
     rows_to_upsert: list[tuple] = []

@@ -96,18 +96,39 @@ This ADR records the answers I measured.
 | Qwen2.5-VL-7B-Instruct-8bit | ~9 GB | 5–16 s | 21–36 s (contention) | ~10% | 2–3 (RAM) |
 | Qwen2-VL-2B-Instruct-4bit | ~1.5 GB | 2.4 s | 3–4 s | ~9% (hallucination on dense) | 5 (GPU watchdog) |
 
-### Pipeline ACTUAL execution (updated 2026-05-14)
+### Pipeline ACTUAL execution + verification (updated 2026-05-14)
 
 The hybrid 2B→7B fallback plan above was **abandoned mid-run** after measurement showed 2B undercounted callouts by ~37% on dense schematics (verified against 7B output on overlapping 40-image sample). Switched to **7B-only Phase 1** with anti-loop Phase 2 retry. Final pipeline:
 
-| Phase | Model | Workers | Images | Wall-clock | JSON parse rate |
+| Phase | Model | Workers | Images | Wall-clock | JSON parse / metric |
 |---|---|---|---|---|---|
 | 1 | Qwen2.5-VL-7B-Instruct-8bit | 3 (parallel) | 1,573 (all) | ~4-5 h | 1463 OK (93.0%) |
 | 2 | Qwen2.5-VL-7B-Instruct-8bit (anti-loop config) | 1 | 110 (Phase 1 fails) | ~26 min | 39 OK (35.5% recovery) |
-| 3a | Phase 3 verify (pure Python Layer 3) | — | 1573 | <1 min | — |
-| **Total** | 7B-only with anti-loop retry | mixed | 1,573 | **~4.5-5.5 h** | **1502 / 1573 = 95.5% with valid JSON** |
+| 3a | Phase 3 verify (Layer 3 consistency, pure Python) | — | 1573 | <1 min | 264 duplicate_n caught |
+| 4 | Phase 4 coverage (Layer 4, vs parts_table ground truth) | — | 1573 | ~1 min (xlsx load + verify) | 62.4% precision ≥90% |
+| 5 | DB integrate (`integrate_into_track_a.py` → image_callouts) | — | 1573 | <30 s | 1573 upserts verified live |
+| **Total** | 7B-only with full 5-layer verification | mixed | 1,573 | **~4.5-5.5 h** | **675 HIGH (42.9%) post-Layer 4** |
 
-**The 2B model was rejected** because content quality (callout count recall) was worse than 7B even though JSON parse rate was similar. Lesson: JSON validity ≠ content correctness. Phase 3a Layer 3 check then revealed 264 of the Phase 1 "OK" records had `duplicate_n` hallucination patterns — moving them from HIGH to MEDIUM confidence. Final ship-able quality: 91.6% HIGH+MEDIUM.
+**The 2B model was rejected** because content quality (callout count recall) was worse than 7B even though JSON parse rate was similar. Lesson: JSON validity ≠ content correctness.
+
+**Phase 3a Layer 3** check revealed 264 of the Phase 1 "OK" records had `duplicate_n` hallucination — content was hallucinated even though JSON was valid. Demoted to MEDIUM.
+
+**Phase 4 Layer 4** (the most rigorous check) then cross-referenced OCR output against the parts table extracted from the source xlsx. Per-image PRECISION = |OCR callouts ∩ parts_table callouts| / |OCR callouts|. Results:
+- 62.4% of images have precision ≥90% (clean OCR — almost all callouts real)
+- 19.9% have precision <70% (significant hallucinated callout numbers)
+- Per-sheet UNION coverage (across all images per sheet): 64.5% reach 100%, 85% reach ≥70%
+- 5 sheets at 0% coverage (text-only specs sheets without schematic diagrams — expected)
+
+**Layer 4 demoted 359 more records** from HIGH to MEDIUM/LOW because precision <90% indicates hallucinated callout numbers that Layer 3 didn't catch.
+
+**Final confidence distribution in `image_callouts` table**:
+| tier | count | % |
+|---|---|---|
+| HIGH | 675 | 42.9% |
+| MEDIUM | 467 | 29.7% |
+| LOW (incl. 71 DEAD-mapped-to-low) | 431 | 27.4% |
+
+**The architectural lesson**: HIGH confidence dropped from 65.7% (Phase 3a only) to 42.9% (Phase 4 added). The 22-percentage-point swing is not a bug — it's the value Layer 4 adds. Without ground-truth cross-reference, we'd have over-stated quality by 22%. The architecture supports honest measurement at every layer; the discipline is in actually doing all the layers.
 
 ### Thermal + power envelope (M1 Max, live via `macmon`)
 
